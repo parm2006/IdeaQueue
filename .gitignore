@@ -1,0 +1,32 @@
+# Python-generated files
+.python-version
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# IdeaQueue web application
+node_modules/
+.env
+.env.local
+.env.*.local
+.env.*
+!.env.example
+.vercel/
+*.tsbuildinfo
+legacy-source.zip
+*.db
+.sites-runtime/
+site-deploy.tar.gz
+.npm-cache/
+.site-source/
+legacy-ideas.json
+.qa/
+worker/assets.generated.json
+
+.vercel

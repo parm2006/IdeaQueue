@@ -1,0 +1,133 @@
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { hosted, workspaceApi, type WorkspaceUser } from './hosted';
+import { supabase } from './supabase';
+import { type Category, type Idea } from './queue';
+
+const columns = 'id,text,context,category,priority,color,created_at,reviewed_at';
+
+export function useIdeas() {
+  const [ideas, setIdeas] = useState<Idea[]>([]);
+  const [user, setUser] = useState<WorkspaceUser | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [ready, setReady] = useState(false);
+  const userRef = useRef<WorkspaceUser | null>(null);
+  const loadVersion = useRef(0);
+  const workspaceEpoch = useRef(0);
+
+  const refresh = useCallback(async () => {
+    const version = ++loadVersion.current;
+    setLoading(true); setError(''); setReady(false);
+    try {
+      let next: Idea[] = [];
+      if (hosted) {
+        const session = await workspaceApi<{ user: WorkspaceUser }>('session');
+        userRef.current = session.user; setUser(session.user);
+        next = (await workspaceApi<{ ideas: Idea[] }>('ideas')).ideas;
+      } else if (supabase && userRef.current) {
+        const { data, error } = await supabase.from('ideas').select(columns).order('created_at', { ascending: false });
+        if (error) throw error;
+        next = data as Idea[];
+      }
+      if (version === loadVersion.current) { setIdeas(next); setReady(!!userRef.current); }
+    } catch (e) {
+      if (version === loadVersion.current) setError((e as { message?: string })?.message || 'Could not load notes. Check your connection and retry.');
+    } finally { if (version === loadVersion.current) setLoading(false); }
+  }, []);
+
+  useEffect(() => {
+    if (hosted || !supabase) { void refresh(); return; }
+    let alive = true;
+    const changeUser = (next: WorkspaceUser | null) => {
+      if (userRef.current?.id !== next?.id) {
+        workspaceEpoch.current++; loadVersion.current++;
+        setIdeas([]); setReady(false);
+      }
+      userRef.current = next; setUser(next);
+    };
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!alive) return;
+      changeUser(session?.user ?? null);
+      // Leave the auth callback before making database requests.
+      window.setTimeout(() => { if (alive) void refresh(); }, 0);
+    });
+    supabase.auth.getSession().then(({ data, error }) => {
+      if (!alive) return;
+      if (error) { setError(error.message); setLoading(false); return; }
+      changeUser(data.session?.user ?? null); void refresh();
+    }).catch(() => { if (alive) { setError('Sign-in could not be initialized.'); setLoading(false); } });
+    return () => { alive = false; subscription.unsubscribe(); loadVersion.current++; };
+  }, [refresh]);
+
+  useEffect(() => {
+    const focus = () => { if (hosted || userRef.current) void refresh(); };
+    window.addEventListener('focus', focus);
+    return () => window.removeEventListener('focus', focus);
+  }, [refresh]);
+
+  const requireUser = () => {
+    if (!ready || !userRef.current) throw new Error('Sign in and wait for your notes to load, then retry.');
+    return userRef.current;
+  };
+  const checkEpoch = (epoch: number) => {
+    if (epoch !== workspaceEpoch.current) throw new Error('Your account changed. Reopen your workspace to check your notes.');
+  };
+
+  const save = async (idea: Idea) => {
+    const owner = requireUser();
+    const epoch = workspaceEpoch.current;
+    let result: Idea;
+    if (hosted) result = (await workspaceApi<{ idea: Idea }>('ideas', idea, 'PUT')).idea;
+    else {
+      if (!supabase) throw new Error('Cloud storage is unavailable.');
+      const { data, error } = await supabase.from('ideas').upsert({ ...idea, user_id: owner.id }).select(columns).single();
+      if (error) throw error;
+      result = data as Idea;
+    }
+    checkEpoch(epoch);
+    setIdeas(current => current.some(i => i.id === result.id) ? current.map(i => i.id === result.id ? result : i) : [...current, result]);
+  };
+
+  const pop = async (category?: Category, expectedId?: string) => {
+    requireUser();
+    const epoch = workspaceEpoch.current;
+    try {
+      let popped: Idea | undefined;
+      if (hosted) popped = (await workspaceApi<{ idea: Idea | null }>('pop', { category, expected_id: expectedId })).idea ?? undefined;
+      else {
+        if (!supabase) throw new Error('Cloud storage is unavailable.');
+        const { data, error } = await supabase.rpc('pop_idea', { p_category: category ?? null, p_expected_id: expectedId ?? null });
+        if (error) throw error;
+        popped = (data as Idea[])?.[0];
+      }
+      checkEpoch(epoch); await refresh(); return popped;
+    } catch (error) { await refresh(); throw error; }
+  };
+
+  const importNotes = async (incoming: Idea[]) => {
+    const owner = requireUser();
+    const epoch = workspaceEpoch.current;
+    const newNotes = incoming.filter(i => !ideas.some(existing => existing.id === i.id));
+    if (!newNotes.length) return 0;
+    let total = 0;
+    try {
+      for (let start = 0; start < newNotes.length; start += 100) {
+        checkEpoch(epoch);
+        const batch = newNotes.slice(start, start + 100);
+        if (hosted) total += (await workspaceApi<{ inserted: number }>('import', batch)).inserted;
+        else {
+          if (!supabase) throw new Error('Cloud storage is unavailable.');
+          const { error } = await supabase.from('ideas').upsert(batch.map(i => ({ ...i, user_id: owner.id })), { onConflict: 'id', ignoreDuplicates: true });
+          if (error) throw error;
+          total += batch.length;
+        }
+      }
+      checkEpoch(epoch); await refresh(); return total;
+    } catch (error) {
+      await refresh();
+      throw new Error(`${total} notes submitted. Retry to add the rest. ${(error as { message?: string })?.message || ''}`);
+    }
+  };
+
+  return { ideas, user, loading, ready, error, refresh, save, pop, importNotes, hosted };
+}
