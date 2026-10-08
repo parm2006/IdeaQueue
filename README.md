@@ -35,7 +35,7 @@ npm run build
 
 On iPhone, open the Vercel URL in Safari → Share → Add to Home Screen. Mobile navigation uses Box/Reviewed and a bucket selector; optional capture fields are collapsed. Pop idea and Find out occupy equal halves of the action row. External search behavior is controlled by the browser and OS. Dictation requires browser/device support and microphone permission; keyboard dictation is a fallback.
 
-Settings lets each authenticated user create/revoke a personal, create-only Shortcut token. POST JSON to `/api/ideas` with `Authorization: Bearer YOUR_CAPTURE_TOKEN`. Owner and capture time are set by the database. The raw token is shown once; only its hash is stored. See [setup instructions](docs/vercel-setup.md) and [capture implementation details](docs/SHORTCUTS.md). Saving requires a connection; there is no offline cloud-write queue.
+The desktop sidebar and Settings include the [shared iPhone Shortcut](https://www.icloud.com/shortcuts/5a8a5621902f4eeca0a761355b0d7e83). Settings lets each authenticated user create/revoke a personal, create-only token. **Copy authorization** includes the required Bearer prefix; paste it into the template's blank Authorization header. POST JSON to `/api/ideas` with `Authorization: Bearer YOUR_CAPTURE_TOKEN`. Owner and capture time are set by the database. The raw token is shown once; only its hash is stored. See [setup instructions](docs/vercel-setup.md) and [capture implementation details](docs/SHORTCUTS.md). Saving requires a connection; there is no offline cloud-write queue.
 
 ## Source layout
 

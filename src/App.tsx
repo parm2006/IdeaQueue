@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { ArrowDownToLine, ArrowUpRight, BookOpen, Box, Check, Cloud, Code2, Download, HelpCircle, Leaf, LoaderCircle, LogOut, Mic, MoreHorizontal, Plus, RefreshCw, Settings2, StickyNote, Upload, X } from 'lucide-react';
+import { ArrowDownToLine, ArrowUpRight, BookOpen, Box, Check, Cloud, Code2, Download, HelpCircle, Leaf, LoaderCircle, LogOut, Mic, MoreHorizontal, Plus, RefreshCw, Settings2, Smartphone, StickyNote, Upload, X } from 'lucide-react';
 import { categories, colors, createIdea, effectivePriority, inferCategory, PriorityQueue, type Category, type Idea, type NoteColor } from './lib/queue';
 import { useIdeas } from './lib/useIdeas';
 import { exportIdeas, readLocal, validateImport } from './lib/storage';
 import { supabase, signInWithGoogle } from './lib/supabase';
 import { AuthGate } from './components/AuthGate';
 import { AccountSettings } from './components/AccountSettings';
+import { shortcutTemplateUrl } from './lib/shortcutTemplate';
 import { speechConstructor, startDictation, type DictationStatus } from './lib/dictation';
 
 type Screen = 'queue' | 'reviewed';
@@ -84,7 +85,7 @@ export default function App() {
       </nav>
       <div className="nav-label bucket-heading">YOUR BUCKETS <span>{categories.length}</span></div>
       <nav className="bucket-nav" aria-label="Idea buckets">{categories.map(c => <button key={c} className={screen === 'queue' && bucket === c ? 'active' : ''} onClick={() => navigate('queue', c)}>{categoryIcon(c)}<span>{c}</span><span className="bucket-count">{active.filter(i => i.category === c).length}</span></button>)}</nav>
-      <div className="sidebar-bottom"><div className="desk-doodle" aria-hidden="true"><span/><span/><span/><svg viewBox="0 0 130 55"><path d="M10 42c38 12 35-43 72-30m-6-8 10 8-12 8" fill="none" stroke="currentColor" strokeWidth="1.5"/></svg></div><p>Make room for<br/><em>one thought at a time.</em></p><button className="connection" onClick={() => setModal('settings')}><span className={`connection-dot ${store.user ? 'cloud-dot' : ''}`}/><span>{store.user ? 'Connected to your cloud' : 'Saved on this device'}</span><Settings2 size={14}/></button><button className="help-link" onClick={() => setModal('help')}><HelpCircle size={15}/> How IdeaQueue works <ArrowUpRight size={14}/></button></div>
+      <div className="sidebar-bottom"><div className="desk-doodle" aria-hidden="true"><span/><span/><span/><svg viewBox="0 0 130 55"><path d="M10 42c38 12 35-43 72-30m-6-8 10 8-12 8" fill="none" stroke="currentColor" strokeWidth="1.5"/></svg></div><p>Make room for<br/><em>one thought at a time.</em></p><button className="connection" onClick={() => setModal('settings')}><span className={`connection-dot ${store.user ? 'cloud-dot' : ''}`}/><span>{store.user ? 'Connected to your cloud' : 'Saved on this device'}</span><Settings2 size={14}/></button><a className="help-link" href={shortcutTemplateUrl} target="_blank" rel="noopener noreferrer"><Smartphone size={15}/> Install iPhone Shortcut <ArrowUpRight size={14}/></a><button className="help-link" onClick={() => setModal('help')}><HelpCircle size={15}/> How IdeaQueue works <ArrowUpRight size={14}/></button></div>
     </aside>
     <div className="main-shell">
       <header className="topbar"><span className="topbar-caption"><span className="tiny-star">✳</span> YOUR PERSONAL THINKING SPACE</span><div><span className="today">{new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', timeZone: 'America/Los_Angeles' }).format(new Date())}</span><button className="icon-button" aria-label="Refresh notes" disabled={store.loading || busy} onClick={() => void store.refresh()}><RefreshCw size={17} className={store.loading ? 'spinning' : ''}/></button><button className="avatar" aria-label="Open account and storage settings" onClick={() => setModal('settings')}>{store.user?.email?.[0]?.toUpperCase() || 'P'}</button></div></header>

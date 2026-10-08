@@ -1,10 +1,16 @@
 # Capture from iOS Shortcuts
 
+Install the [shared Idea Queue Shortcut](https://www.icloud.com/shortcuts/5a8a5621902f4eeca0a761355b0d7e83) from the desktop sidebar or Settings → Capture with iOS Shortcuts. This template has a blank Authorization header and no import questions. After installing, edit **Get Contents of URL → Headers → Authorization** and paste the entire value copied by **Copy authorization**, including `Bearer `. Do not paste only the raw token.
+
+On an iPhone with an Action button, open **Settings → Action Button → Shortcut → Idea Queue**. [Apple's Action button guide](https://support.apple.com/guide/iphone/use-and-customize-the-action-button-iphe89d61d66/ios) describes this setting.
+
+To make a future template ask for authorization during installation, add a setup/import question to the Shortcut on your iPhone and share that version. Keep the default answer blank; recipients paste their own authorization. Shared iCloud copies cannot be edited by this website. See [Apple's import-question guide](https://support.apple.com/en-ca/guide/shortcuts/apdf330fd3a0/ios).
+
 Database setup: run `supabase/schema.sql`, then `supabase/shortcuts.sql` in your project's SQL Editor. The second file is transactional. It uses Supabase's pgcrypto extension in the `extensions` schema.
 
 Vercel needs `SUPABASE_URL` and `SUPABASE_ANON_KEY`, using the same project URL and public publishable/anon key as the frontend. The handler also accepts the frontend `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` variables. Do not supply a service-role key.
 
-Sign into IdeaQueue and create a Shortcut token in Settings. Copy the token when it appears; only its SHA-256 hash remains in the database, so it cannot be shown again. Each token belongs to the account that created it. Revoke a token in Settings if you stop using the Shortcut.
+Sign into IdeaQueue and create a Shortcut token in Settings. Copy authorization when it appears; the copied value includes the required Bearer prefix. Only the token's SHA-256 hash remains in the database, so it cannot be shown again. Each token belongs to the account that created it. Revoke a token in Settings if you stop using the Shortcut.
 
 In Apple's Shortcuts:
 
