@@ -22,6 +22,8 @@ In Apple's Shortcuts:
 
 The bucket defaults from the idea text, priority defaults to 5, color defaults to yellow, and context remains empty unless you supply it. The database supplies the capture date and time. A successful response has status 201 and contains only the new note's ID and timestamp.
 
+Only `text`, `context`, `category`, `priority`, and `color` are accepted in the JSON body. Remove extra or blank placeholder fields: unknown fields return HTTP 400. Do not send a user ID, note ID, capture date, or reviewed status. The shared template's authorization is intentionally blank; each installed personal copy needs its owner's complete Bearer value.
+
 A Shortcut token grants permission to create notes for its owner. It cannot list, edit or pop notes, impersonate another account, or manage other tokens. Do not put it in a public URL or shared Shortcut. The public Supabase key itself grants no note access. Invalid/revoked capture tokens return 401. The endpoint intentionally does not enable browser cross-origin requests; Shortcuts sends a native HTTP request.
 
 Token RPCs are `create_shortcut_token(p_label)`, `list_shortcut_tokens()`, and `revoke_shortcut_token(p_id)` for signed-in accounts. The capture RPC is `capture_idea_with_token`; it validates the opaque bearer token, sets ownership itself, and returns only a new-note receipt. Its hashes live in an unexposed private schema with no user grants. Revocation and capture lock the same token row so revocation is honored by subsequent writes.
