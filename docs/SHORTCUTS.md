@@ -24,6 +24,28 @@ The bucket defaults from the idea text, priority defaults to 5, color defaults t
 
 Only `text`, `context`, `category`, `priority`, and `color` are accepted in the JSON body. Remove extra or blank placeholder fields: unknown fields return HTTP 400. Do not send a user ID, note ID, capture date, or reviewed status. The shared template's authorization is intentionally blank; each installed personal copy needs its owner's complete Bearer value.
 
+## Offline outbox
+
+The web app needs a connection to load, but a Shortcut can capture without one. Configure a local outbox so the action button never depends on service:
+
+1. In your personal copy of the Shortcut, keep the type/dictate menu and its `IdeaText` variable. Replace the current **Get Contents of URL** action with a **Text** action whose value is `{"text":"IdeaText"}` using the blue `IdeaText` variable token, then add **Append to File**. Give it the Text result, turn on **Append New Line**, and save it to `On My iPhone/Shortcuts/IdeaQ/outbox.ndjson`. Choose **On My iPhone**, rather than iCloud Drive, when Shortcuts asks where to save it.
+2. Add a second menu choice named **Sync saved ideas**. Its actions are: **Get File** at `Shortcuts/IdeaQ/outbox.ndjson` from **On My iPhone**; **Get Contents of File**; then **Get Contents of URL** with the configuration below. Set its request body to JSON with one key, `outbox`, whose value is the contents-of-file variable.
+
+   ```text
+   URL: https://ideaqueue.vercel.app/api/sync
+   Method: POST
+   Headers:
+     Content-Type: application/json
+     Authorization: Bearer YOUR_CAPTURE_TOKEN
+   JSON body:
+     {"outbox": Contents of File}
+   ```
+
+3. After that request, add **Delete File** for the same outbox file. Do this only on the success path. If the request fails or there is no service, leave the file in place and try **Sync saved ideas** later.
+4. For automatic delivery, create a personal automation in Shortcuts: **Automation → Wi-Fi → Any Network → Runs Immediately**, then add **Run Shortcut** for this Shortcut and pass it the text `sync`. In the Shortcut, send that input to the **Sync saved ideas** branch before showing the capture menu. Apple keeps personal automations on the device where you create them, so set this up on each phone.
+
+`POST /api/sync` accepts up to 50 newline-separated JSON captures at a time and uses the same create-only token checks as `/api/ideas`. It validates the entire local file before making any writes, then returns `201 {"saved": number}` when every capture was accepted. Delete the file only after that response. A network interruption after the server accepts a request but before the phone receives the response can cause a duplicate on retry; the outbox protects the thought from being lost.
+
 A Shortcut token grants permission to create notes for its owner. It cannot list, edit or pop notes, impersonate another account, or manage other tokens. Do not put it in a public URL or shared Shortcut. The public Supabase key itself grants no note access. Invalid/revoked capture tokens return 401. The endpoint intentionally does not enable browser cross-origin requests; Shortcuts sends a native HTTP request.
 
 Token RPCs are `create_shortcut_token(p_label)`, `list_shortcut_tokens()`, and `revoke_shortcut_token(p_id)` for signed-in accounts. The capture RPC is `capture_idea_with_token`; it validates the opaque bearer token, sets ownership itself, and returns only a new-note receipt. Its hashes live in an unexposed private schema with no user grants. Revocation and capture lock the same token row so revocation is honored by subsequent writes.

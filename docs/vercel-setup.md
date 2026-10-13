@@ -53,7 +53,7 @@ Content-Type: application/json
 Authorization: Bearer YOUR_CAPTURE_TOKEN
 ```
 
-JSON body: `{"text":"Your dictated thought","priority":5}`. Bucket is inferred from text when omitted. Date/hour come from the database; context remains blank unless supplied. This endpoint cannot list, read, edit, or pop existing notes. Revoke a token in Settings if you stop using that Shortcut. Keep captured notes online; the app has no offline write queue.
+JSON body: `{"text":"Your dictated thought","priority":5}`. Bucket is inferred from text when omitted. Date/hour come from the database; context remains blank unless supplied. This endpoint cannot list, read, edit, or pop existing notes. Revoke a token in Settings if you stop using that Shortcut. For disconnected Action Button capture, configure the on-device outbox and `/api/sync` flow in [the Shortcut guide](SHORTCUTS.md#offline-outbox).
 
 ## Key handling
 

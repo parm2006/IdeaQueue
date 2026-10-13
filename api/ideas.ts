@@ -18,14 +18,38 @@ export type CaptureRpc = (token: string, input: CaptureInput) => Promise<{
   data: { id: string; created_at: string }[] | null;
   error: { code?: string; message?: string } | null;
 }>;
-const BODY_LIMIT = 16 * 1024;
-const TOKEN_PATTERN = /^iqc_[a-f0-9]{64}$/;
-class CaptureError extends Error {
+export const BODY_LIMIT = 16 * 1024;
+export const TOKEN_PATTERN = /^iqc_[a-f0-9]{64}$/;
+export class CaptureError extends Error {
   constructor(readonly status: number, message: string) { super(message); }
 }
-function header(request: CaptureRequest, name: string): string {
+export function header(request: CaptureRequest, name: string): string {
   const value = request.headers[name];
   return typeof value === 'string' ? value : '';
+}
+
+/** Parse a small JSON request body consistently across Vercel's parsed and raw forms. */
+export function parseJsonBody(request: CaptureRequest, limit = BODY_LIMIT): unknown {
+  const declaredSize = Number(header(request, 'content-length'));
+  if (Number.isFinite(declaredSize) && declaredSize > limit) throw new CaptureError(413, 'Request body is too large.');
+  let body = request.body;
+  if (typeof body === 'string') {
+    if (new TextEncoder().encode(body).length > limit) throw new CaptureError(413, 'Request body is too large.');
+    try { return JSON.parse(body); } catch { throw new CaptureError(400, 'Invalid JSON body.'); }
+  }
+  if (new TextEncoder().encode(JSON.stringify(body) ?? '').length > limit) throw new CaptureError(413, 'Request body is too large.');
+  return body;
+}
+
+export function authorizeCapture(request: CaptureRequest): string {
+  const authorization = header(request, 'authorization');
+  if (!authorization.startsWith('Bearer ') || !TOKEN_PATTERN.test(authorization.slice(7))) {
+    throw new CaptureError(401, 'A valid Shortcut capture token is required.');
+  }
+  if (!/^application\/json(?:\s*;|\s*$)/i.test(header(request, 'content-type'))) {
+    throw new CaptureError(415, 'Use application/json.');
+  }
+  return authorization.slice(7);
 }
 
 /** Reject identity/timestamps in capture input: the database sets the owner and capture time. */
@@ -64,25 +88,10 @@ export async function handleCapture(request: CaptureRequest, response: CaptureRe
       response.setHeader('Allow', 'POST');
       throw new CaptureError(405, 'Only POST is supported.');
     }
-    const authorization = header(request, 'authorization');
-    if (!authorization.startsWith('Bearer ') || !TOKEN_PATTERN.test(authorization.slice(7))) {
-      throw new CaptureError(401, 'A valid Shortcut capture token is required.');
-    }
-    if (!/^application\/json(?:\s*;|\s*$)/i.test(header(request, 'content-type'))) {
-      throw new CaptureError(415, 'Use application/json.');
-    }
-    const declaredSize = Number(header(request, 'content-length'));
-    if (Number.isFinite(declaredSize) && declaredSize > BODY_LIMIT) throw new CaptureError(413, 'Request body is too large.');
-    let body = request.body;
-    if (typeof body === 'string') {
-      if (new TextEncoder().encode(body).length > BODY_LIMIT) throw new CaptureError(413, 'Request body is too large.');
-      try { body = JSON.parse(body); } catch { throw new CaptureError(400, 'Invalid JSON body.'); }
-    } else if (new TextEncoder().encode(JSON.stringify(body) ?? '').length > BODY_LIMIT) {
-      throw new CaptureError(413, 'Request body is too large.');
-    }
-    const input = validateCapture(body);
+    const token = authorizeCapture(request);
+    const input = validateCapture(parseJsonBody(request));
     if (!config.url || !config.publicKey) throw new CaptureError(503, 'Capture is not configured yet.');
-    const { data, error } = await rpc(authorization.slice(7), input);
+    const { data, error } = await rpc(token, input);
     if (error) {
       if (error.code === '28000') throw new CaptureError(401, 'The capture token is invalid or revoked.');
       if (error.code === '22023' || error.code === '23514') throw new CaptureError(400, 'Invalid idea details.');

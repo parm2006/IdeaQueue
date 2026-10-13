@@ -50,7 +50,7 @@ npm run build
 
 On iPhone, open the Vercel URL in Safari → Share → Add to Home Screen. Mobile navigation uses Box/Reviewed and a bucket selector; optional capture fields are collapsed. Pop idea and Find out occupy equal halves of the action row. External search behavior is controlled by the browser and OS. Dictation requires browser/device support and microphone permission; keyboard dictation is a fallback.
 
-The desktop sidebar and Settings include the [shared iPhone Shortcut](https://www.icloud.com/shortcuts/5a8a5621902f4eeca0a761355b0d7e83). Settings lets each authenticated user create/revoke a personal, create-only token. **Copy authorization** includes the required Bearer prefix; paste it into the template's blank Authorization header. POST JSON to `/api/ideas` with `Authorization: Bearer YOUR_CAPTURE_TOKEN`. Owner and capture time are set by the database. The raw token is shown once; only its hash is stored. See [setup instructions](docs/vercel-setup.md) and [capture implementation details](docs/SHORTCUTS.md). Saving requires a connection; there is no offline cloud-write queue.
+The desktop sidebar and Settings include the [shared iPhone Shortcut](https://www.icloud.com/shortcuts/5a8a5621902f4eeca0a761355b0d7e83). Settings lets each authenticated user create/revoke a personal, create-only token. **Copy authorization** includes the required Bearer prefix; paste it into the template's blank Authorization header. POST JSON to `/api/ideas` with `Authorization: Bearer YOUR_CAPTURE_TOKEN`. Owner and capture time are set by the database. The raw token is shown once; only its hash is stored. The Shortcut can also save captures first in an on-device outbox and sync them later through `/api/sync`; see [capture implementation details](docs/SHORTCUTS.md#offline-outbox).
 
 On supported iPhones, assign **Idea Queue** under **Settings → Action Button → Shortcut**. The shared template intentionally contains no user's authorization.
 
@@ -70,5 +70,6 @@ Run `npm test` and `npm run build` for automated checks and the production build
 - `supabase/shortcuts.sql`: private token hashes and narrowly scoped capture functions.
 - `supabase/shortcuts.test.sql`: transactional account/token privacy checks.
 - `api/ideas.ts`: Vercel create-only capture endpoint.
+- `api/sync.ts`: Vercel endpoint for a local Shortcut outbox.
 
 The previous ChatGPT Sites app uses Cloudflare D1 and its private Sites access boundary. Its worker, migration history, and `npm run build:sites` command remain for reference; they are not the Vercel database/API. Old source and SQLite files stay preserved locally and are not published. Original requirements are in `docs/original-spec.md`.
