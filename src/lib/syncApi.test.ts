@@ -22,6 +22,13 @@ async function call(req: CaptureRequest, rpc: CaptureRpc = vi.fn().mockResolvedV
 }
 
 describe('Shortcut offline outbox sync', () => {
+  it('returns no saved count and stops the batch when capacity rejects a write', async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: null, error: { code: '53100' } });
+    const result = await call(request({ outbox: `${note}\n${note}` }), rpc);
+    expect(result.status).toBe(507);
+    expect(result.body).not.toHaveProperty('saved');
+    expect(rpc).toHaveBeenCalledTimes(1);
+  });
   it('saves each valid queued note in order and returns one small receipt', async () => {
     const rpc = vi.fn().mockResolvedValue({ data: [{ id: 'saved', created_at: '2026-10-13T12:00:00Z' }], error: null });
     const result = await call(request({ outbox: `${note}\n${JSON.stringify({ text: 'Call Mum', priority: 8 })}` }), rpc);

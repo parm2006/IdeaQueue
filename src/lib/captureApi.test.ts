@@ -58,6 +58,14 @@ describe('Shortcut capture authorization', () => {
   });
 });
 describe('Shortcut capture validation', () => {
+  it('returns 507 without a success receipt when storage is full or read-only', async () => {
+    for (const code of ['53100', '25006']) {
+      const result = await call(request(), vi.fn().mockResolvedValue({ data: null, error: { code, message: 'private database details' } }));
+      expect(result.status).toBe(507);
+      expect(result.body).toEqual({ error: expect.stringContaining('Keep your queue intact') });
+      expect(JSON.stringify(result.body)).not.toContain('private database details');
+    }
+  });
   it('uses only note text for bucket inference and preserves manual context', () => {
     expect(validateCapture({ text: '  Calculus proof  ', context: 'Build a website' })).toEqual({
       text: 'Calculus proof', context: 'Build a website', category: 'Mathematics', priority: 5, color: 'yellow',

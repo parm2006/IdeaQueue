@@ -23,6 +23,11 @@ export const TOKEN_PATTERN = /^iqc_[a-f0-9]{64}$/;
 export class CaptureError extends Error {
   constructor(readonly status: number, message: string) { super(message); }
 }
+export function checkStorageError(error: { code?: string }): void {
+  if (error.code === '53100' || error.code === '25006') {
+    throw new CaptureError(507, 'Cloud storage is full or unavailable. Keep your queue intact and retry after space is freed.');
+  }
+}
 export function header(request: CaptureRequest, name: string): string {
   const value = request.headers[name];
   return typeof value === 'string' ? value : '';
@@ -93,6 +98,7 @@ export async function handleCapture(request: CaptureRequest, response: CaptureRe
     if (!config.url || !config.publicKey) throw new CaptureError(503, 'Capture is not configured yet.');
     const { data, error } = await rpc(token, input);
     if (error) {
+      checkStorageError(error);
       if (error.code === '28000') throw new CaptureError(401, 'The capture token is invalid or revoked.');
       if (error.code === '22023' || error.code === '23514') throw new CaptureError(400, 'Invalid idea details.');
       throw new CaptureError(503, 'Capture could not complete. Try again later.');

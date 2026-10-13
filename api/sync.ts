@@ -1,13 +1,11 @@
 import { createClient } from '@supabase/supabase-js';
 import {
-  authorizeCapture, CaptureError, type CaptureConfig, type CaptureInput, type CaptureRequest,
+  authorizeCapture, CaptureError, checkStorageError, type CaptureConfig, type CaptureInput, type CaptureRequest,
   type CaptureResponse, type CaptureRpc, parseJsonBody, validateCapture,
 } from './ideas.js';
 
 const SYNC_BODY_LIMIT = 64 * 1024;
 const MAX_OUTBOX_ITEMS = 50;
-
-interface SyncBody { outbox: string }
 
 function validateOutbox(body: unknown): CaptureInput[] {
   if (!body || typeof body !== 'object' || Array.isArray(body)) throw new CaptureError(400, 'Expected a JSON object.');
@@ -43,6 +41,7 @@ export async function handleSync(request: CaptureRequest, response: CaptureRespo
     for (const input of inputs) {
       const { data, error } = await rpc(token, input);
       if (error) {
+        checkStorageError(error);
         if (error.code === '28000') throw new CaptureError(401, 'The capture token is invalid or revoked.');
         if (error.code === '22023' || error.code === '23514') throw new CaptureError(400, 'Invalid idea details.');
         throw new CaptureError(503, 'Sync could not complete. Try again later.');

@@ -55,6 +55,14 @@ Authorization: Bearer YOUR_CAPTURE_TOKEN
 
 JSON body: `{"text":"Your dictated thought","priority":5}`. Bucket is inferred from text when omitted. Date/hour come from the database; context remains blank unless supplied. This endpoint cannot list, read, edit, or pop existing notes. Revoke a token in Settings if you stop using that Shortcut. For disconnected Action Button capture, configure the on-device outbox and `/api/sync` flow in [the Shortcut guide](SHORTCUTS.md#offline-outbox).
 
+## Reviewed cleanup and capacity
+
+After `setup.sql`, run `supabase/maintenance.sql`, then `supabase/maintenance-schedule.sql` in the SQL Editor. The latter enables Supabase Cron and schedules permanent deletion of all reviewed notes at the top of every hour. Pending notes remain. Running it again updates the same named jobs. The live IdeaQueue project already has both installed.
+
+The private storage policy defaults to a conservative 450 MB database allocation limit. Its table trigger checks inserts and growing text/context updates, including direct browser writes and Shortcut RPCs. SQLSTATE `53100` (capacity/disk full) and `25006` (read-only database) map to HTTP 507 on the capture/sync APIs. A rejected sync has no `saved` field, so the Shortcut's `saved > 0` branch leaves its queue intact. Partial batch failures can still create duplicates on retry.
+
+`pg_database_size` is an allocated database-size guard, not a provider-wide free-space/billing guarantee. Deletion makes space reusable via autovacuum but does not guarantee immediate reduction in allocated bytes. Admins can adjust the private policy after changing plans. `supabase/maintenance.test.sql` is a transactional scratch-database test, not a production migration.
+
 ## Key handling
 
 The publishable key is designed for browser use; row-level security protects the data. Rotate the privileged secret key that was shared in chat under Supabase Settings → API Keys. The deployed app does not need that key, so rotating it will not require a deployment change.

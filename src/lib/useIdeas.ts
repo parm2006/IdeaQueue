@@ -59,6 +59,15 @@ export function useIdeas() {
     return () => { alive = false; subscription.unsubscribe(); loadVersion.current++; };
   }, [refresh]);
 
+  const hasReviewed = ideas.some(idea => idea.reviewed_at);
+  useEffect(() => {
+    if (hosted || !hasReviewed) return;
+    const timer = window.setInterval(() => {
+      if (userRef.current && document.visibilityState === 'visible') void refresh();
+    }, 60000);
+    return () => window.clearInterval(timer);
+  }, [hasReviewed, refresh]);
+
   useEffect(() => {
     const focus = () => { if (hosted || userRef.current) void refresh(); };
     window.addEventListener('focus', focus);
@@ -80,7 +89,16 @@ export function useIdeas() {
     if (hosted) result = (await workspaceApi<{ idea: Idea }>('ideas', idea, 'PUT')).idea;
     else {
       if (!supabase) throw new Error('Cloud storage is unavailable.');
-      const { data, error } = await supabase.from('ideas').upsert({ ...idea, user_id: owner.id }).select(columns).single();
+      const row = { ...idea, user_id: owner.id };
+      const existing = ideas.some(current => current.id === idea.id);
+      const write = existing
+        ? supabase.from('ideas').update(row).eq('id', idea.id)
+        : supabase.from('ideas').insert(row);
+      const { data, error } = await write.select(columns).single();
+      if (error?.code === 'PGRST116') {
+        await refresh();
+        throw new Error('This idea is no longer available. Reviewed ideas are cleared hourly.');
+      }
       if (error) throw error;
       result = data as Idea;
     }
