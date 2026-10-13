@@ -21,7 +21,7 @@ React 19, TypeScript, and Vite provide the frontend. Supabase Postgres stores no
 
 ## Set up another deployment
 
-Follow [the exact Supabase and Google setup steps](docs/vercel-setup.md). Run `supabase/setup.sql`, enable the Google provider, and configure the Vercel return URL. No old test notes are migrated. Client code needs only the public Supabase URL and publishable key.
+Follow [the exact Supabase and Google setup steps](docs/vercel-setup.md). Run `supabase/setup.sql`, `supabase/maintenance.sql`, `supabase/reviewed-retention.sql`, and `supabase/maintenance-schedule.sql` in that order, then enable the Google provider and configure the Vercel return URL. The retention migration is required by the current frontend. No old test notes are migrated. Client code needs only the public Supabase URL and publishable key.
 
 ## Run locally
 
@@ -60,13 +60,22 @@ The capture JSON accepts only `text` (required), `context`, `category`, `priorit
 
 ## Database maintenance
 
-Supabase Cron runs at the top of every hour. By default, it permanently deletes an account's reviewed notes. In Settings → Reviewed cleanup, turn off **Delete reviewed ideas every hour** to keep each note until it has spent 7 days in Reviewed; the next hourly sweep then deletes it. This uses `reviewed_at`, not the original creation date. Pending notes are preserved. Preferences are private per account and sync across devices; there is no manual clear button. The live project has this enabled. For another deployment, run `supabase/maintenance.sql`, `supabase/reviewed-retention.sql`, then `supabase/maintenance-schedule.sql` after database setup. Existing deployments with maintenance installed need only `supabase/reviewed-retention.sql` for the preference feature.
+Open **Settings → Reviewed cleanup → Delete reviewed ideas every hour** to choose your account's retention:
+
+| Setting | When reviewed ideas are permanently deleted |
+|---|---|
+| On (default) | At the next hourly cleanup |
+| Off | Once each idea has spent 7 days in Reviewed, at the next hourly cleanup |
+
+Supabase Cron still runs at the top of every hour in both modes. The 7-day age uses `reviewed_at`, not the idea's original creation date. Pending notes are preserved, preferences sync across devices, and **Add idea** stays on both tabs; there is no manual clear button. The live project has this enabled. Existing deployments with maintenance installed need only `supabase/reviewed-retention.sql` to add the preference feature; fresh deployments use the full installation order above.
 
 A private database trigger checks allocated database size before inserting notes or growing their text/context. It blocks writes at a conservative 450,000,000-byte threshold, reserving headroom below Supabase's free-tier quota. It covers browser saves/imports and both Shortcut endpoints. API storage failures return HTTP 507 without a positive saved count, so the Shortcut retains its queue. This measures database allocation, not exact provider disk, WAL, object-storage, or organization billing headroom. PostgreSQL autovacuum reuses space after deletion; allocated database size may not immediately shrink.
 
 ## Validation
 
 Run `npm test` and `npm run build` for automated checks and the production build. `supabase/shortcuts.test.sql` exercises two-account isolation, token ownership, revocation, and capture defaults in an isolated PostgreSQL database; its fixtures roll back. It is a psql test script, not part of production setup. Phone and desktop browser checks verified the sign-in gate, upcoming-note behavior, installer link, complete authorization clipboard value, and absence of token persistence in browser storage. Physical iPhone dictation and Action Button behavior depend on device setup.
+
+`supabase/maintenance.test.sql` verifies capacity rejection and preservation of pending notes. `supabase/reviewed-retention.test.sql` verifies account isolation, both retention modes, the exact 7-day review-age boundary, and re-enabling hourly deletion. Both are transactional scratch-database tests, not production setup scripts. Phone and desktop checks with synthetic accounts also verified that the Settings preference persists after reload and Add idea remains on both tabs.
 
 ## Source layout
 
