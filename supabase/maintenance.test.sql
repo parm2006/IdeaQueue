@@ -1,4 +1,4 @@
--- Scratch DB only, after schema.sql, shortcuts.sql and maintenance.sql.
+-- Scratch DB only, after schema.sql, shortcuts.sql, maintenance.sql and reviewed-retention.sql.
 -- Fixtures and forced capacity limits roll back. Never run against production.
 begin;
 insert into auth.users(id) values

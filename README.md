@@ -11,7 +11,7 @@ The Vercel app uses **Supabase Postgres + Supabase Auth with Google OAuth**. Eve
 1. Open the live app and continue with Google. Each account starts with its own private idea box.
 2. Choose **Add idea** to type or dictate a thought. Bucket, starting priority, context, and color are optional.
 3. The highest-priority upcoming thought stays visible. **Pop idea** moves it to Reviewed and shows the next; **Find out** opens a Google search for that thought.
-4. Use Reviewed to revisit or restore a note before the next hourly cleanup. Settings includes backups, the iPhone Shortcut installer, and personal capture tokens.
+4. Use Reviewed to revisit or restore a note. Settings includes your reviewed-note cleanup preference, backups, the iPhone Shortcut installer, and personal capture tokens. Add idea stays available on both tabs.
 
 The live app is configured for Google sign-in and Supabase storage. The setup instructions below are for developers deploying another instance.
 
@@ -60,7 +60,7 @@ The capture JSON accepts only `text` (required), `context`, `category`, `priorit
 
 ## Database maintenance
 
-Supabase Cron permanently deletes all reviewed notes at the top of every hour; pending notes are preserved. Restore a reviewed note before that run to keep it. The live project has this enabled. For another deployment, run `supabase/maintenance.sql`, then `supabase/maintenance-schedule.sql` after database setup.
+Supabase Cron runs at the top of every hour. By default, it permanently deletes an account's reviewed notes. In Settings → Reviewed cleanup, turn off **Delete reviewed ideas every hour** to keep each note until it has spent 7 days in Reviewed; the next hourly sweep then deletes it. This uses `reviewed_at`, not the original creation date. Pending notes are preserved. Preferences are private per account and sync across devices; there is no manual clear button. The live project has this enabled. For another deployment, run `supabase/maintenance.sql`, `supabase/reviewed-retention.sql`, then `supabase/maintenance-schedule.sql` after database setup. Existing deployments with maintenance installed need only `supabase/reviewed-retention.sql` for the preference feature.
 
 A private database trigger checks allocated database size before inserting notes or growing their text/context. It blocks writes at a conservative 450,000,000-byte threshold, reserving headroom below Supabase's free-tier quota. It covers browser saves/imports and both Shortcut endpoints. API storage failures return HTTP 507 without a positive saved count, so the Shortcut retains its queue. This measures database allocation, not exact provider disk, WAL, object-storage, or organization billing headroom. PostgreSQL autovacuum reuses space after deletion; allocated database size may not immediately shrink.
 
@@ -79,7 +79,8 @@ Run `npm test` and `npm run build` for automated checks and the production build
 - `supabase/shortcuts.test.sql`: transactional account/token privacy checks.
 - `api/ideas.ts`: Vercel create-only capture endpoint.
 - `api/sync.ts`: Vercel endpoint for a local Shortcut outbox.
-- `supabase/maintenance.sql`: database storage guard and admin-only cleanup function.
+- `supabase/maintenance.sql`: database storage guard.
+- `supabase/reviewed-retention.sql`: private per-account preferences and admin-only retention cleanup.
 - `supabase/maintenance-schedule.sql`: hourly reviewed cleanup and app cron-log retention.
 
 The previous ChatGPT Sites app uses Cloudflare D1 and its private Sites access boundary. Its worker, migration history, and `npm run build:sites` command remain for reference; they are not the Vercel database/API. Old source and SQLite files stay preserved locally and are not published. Original requirements are in `docs/original-spec.md`.

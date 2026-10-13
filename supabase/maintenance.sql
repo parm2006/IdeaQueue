@@ -43,18 +43,8 @@ drop trigger if exists ideas_storage_guard on public.ideas;
 create trigger ideas_storage_guard before insert or update on public.ideas
 for each row execute function ideaqueue_private.guard_idea_storage();
 
--- Admin-only cleanup. Pending ideas (reviewed_at is null) are never deleted.
-create or replace function ideaqueue_private.delete_reviewed_ideas()
-returns bigint language plpgsql security definer set search_path = ''
-as $$
-declare removed bigint;
-begin
-  delete from public.ideas where reviewed_at is not null;
-  get diagnostics removed = row_count;
-  return removed;
-end;
-$$;
-revoke all on function ideaqueue_private.delete_reviewed_ideas() from public, anon, authenticated;
+-- reviewed-retention.sql owns the cleanup function and account preferences.
+-- Re-running this capacity migration must never reset retention behavior.
 create index if not exists ideas_reviewed_cleanup on public.ideas(reviewed_at)
 where reviewed_at is not null;
 commit;

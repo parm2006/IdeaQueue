@@ -57,7 +57,9 @@ JSON body: `{"text":"Your dictated thought","priority":5}`. Bucket is inferred f
 
 ## Reviewed cleanup and capacity
 
-After `setup.sql`, run `supabase/maintenance.sql`, then `supabase/maintenance-schedule.sql` in the SQL Editor. The latter enables Supabase Cron and schedules permanent deletion of all reviewed notes at the top of every hour. Pending notes remain. Running it again updates the same named jobs. The live IdeaQueue project already has both installed.
+After `setup.sql`, run `supabase/maintenance.sql`, `supabase/reviewed-retention.sql`, then `supabase/maintenance-schedule.sql` in the SQL Editor. The latter enables Supabase Cron and schedules a cleanup sweep at the top of every hour. Pending notes remain. Running it again updates the same named jobs. The live IdeaQueue project has all three installed. Existing deployments with the hourly job installed need only `reviewed-retention.sql`; it replaces the cleanup function without changing the hourly schedule.
+
+Settings → Reviewed cleanup has an account-specific **Delete reviewed ideas every hour** toggle, on by default. When off, the same hourly job deletes only notes with `reviewed_at <= now() - interval '7 days'`. A note created months ago but reviewed today stays for 7 days. Turning the toggle back on makes all reviewed notes eligible at the next hourly run. The settings table has select/insert/update row-level policies restricted to `auth.uid()`; users cannot change another account's preference. The cleanup function remains admin-only. `reviewed-retention.test.sql` verifies both modes, the exact 7-day boundary, review-vs-creation timestamps, and account isolation against a scratch database.
 
 The private storage policy defaults to a conservative 450 MB database allocation limit. Its table trigger checks inserts and growing text/context updates, including direct browser writes and Shortcut RPCs. SQLSTATE `53100` (capacity/disk full) and `25006` (read-only database) map to HTTP 507 on the capture/sync APIs. A rejected sync has no `saved` field, so the Shortcut's `saved > 0` branch leaves its queue intact. Partial batch failures can still create duplicates on retry.
 

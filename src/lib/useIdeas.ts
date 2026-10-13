@@ -11,6 +11,7 @@ export function useIdeas() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [ready, setReady] = useState(false);
+  const [hourlyCleanup, setHourlyCleanup] = useState(true);
   const userRef = useRef<WorkspaceUser | null>(null);
   const loadVersion = useRef(0);
   const workspaceEpoch = useRef(0);
@@ -20,16 +21,23 @@ export function useIdeas() {
     setLoading(true); setError(''); setReady(false);
     try {
       let next: Idea[] = [];
+      let nextHourlyCleanup = true;
       if (hosted) {
         const session = await workspaceApi<{ user: WorkspaceUser }>('session');
         userRef.current = session.user; setUser(session.user);
         next = (await workspaceApi<{ ideas: Idea[] }>('ideas')).ideas;
       } else if (supabase && userRef.current) {
-        const { data, error } = await supabase.from('ideas').select(columns).order('created_at', { ascending: false });
+        const [notes, settings] = await Promise.all([
+          supabase.from('ideas').select(columns).order('created_at', { ascending: false }),
+          supabase.from('ideaqueue_settings').select('hourly_cleanup').eq('user_id', userRef.current.id).maybeSingle(),
+        ]);
+        const { data, error } = notes;
         if (error) throw error;
+        if (settings.error) throw settings.error;
+        nextHourlyCleanup = settings.data?.hourly_cleanup ?? true;
         next = data as Idea[];
       }
-      if (version === loadVersion.current) { setIdeas(next); setReady(!!userRef.current); }
+      if (version === loadVersion.current) { setIdeas(next); setHourlyCleanup(nextHourlyCleanup); setReady(!!userRef.current); }
     } catch (e) {
       if (version === loadVersion.current) setError((e as { message?: string })?.message || 'Could not load notes. Check your connection and retry.');
     } finally { if (version === loadVersion.current) setLoading(false); }
@@ -41,7 +49,7 @@ export function useIdeas() {
     const changeUser = (next: WorkspaceUser | null) => {
       if (userRef.current?.id !== next?.id) {
         workspaceEpoch.current++; loadVersion.current++;
-        setIdeas([]); setReady(false);
+        setIdeas([]); setHourlyCleanup(true); setReady(false);
       }
       userRef.current = next; setUser(next);
     };
@@ -97,13 +105,23 @@ export function useIdeas() {
       const { data, error } = await write.select(columns).single();
       if (error?.code === 'PGRST116') {
         await refresh();
-        throw new Error('This idea is no longer available. Reviewed ideas are cleared hourly.');
+        throw new Error('This idea is no longer available. It may have been cleared from Reviewed.');
       }
       if (error) throw error;
       result = data as Idea;
     }
     checkEpoch(epoch);
     setIdeas(current => current.some(i => i.id === result.id) ? current.map(i => i.id === result.id ? result : i) : [...current, result]);
+  };
+
+  const setReviewedCleanup = async (enabled: boolean) => {
+    const owner = requireUser();
+    const epoch = workspaceEpoch.current;
+    if (!supabase || hosted) throw new Error('Reviewed cleanup settings are available on the Supabase app.');
+    const { error } = await supabase.from('ideaqueue_settings').upsert({ user_id: owner.id, hourly_cleanup: enabled });
+    if (error) throw error;
+    checkEpoch(epoch);
+    await refresh();
   };
 
   const pop = async (category?: Category, expectedId?: string) => {
@@ -147,5 +165,5 @@ export function useIdeas() {
     }
   };
 
-  return { ideas, user, loading, ready, error, refresh, save, pop, importNotes, hosted };
+  return { ideas, user, loading, ready, error, refresh, save, pop, importNotes, hosted, hourlyCleanup, setReviewedCleanup };
 }

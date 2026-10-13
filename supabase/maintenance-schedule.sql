@@ -1,5 +1,5 @@
--- Run after maintenance.sql. Schedules permanent deletion of all reviewed
--- notes at the top of each hour; no pending ideas are deleted.
+-- Run after maintenance.sql and reviewed-retention.sql. The hourly sweep
+-- respects each account's preference; pending ideas are never deleted.
 begin;
 create extension if not exists pg_cron with schema pg_catalog;
 select cron.schedule(
