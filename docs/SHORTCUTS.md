@@ -1,8 +1,8 @@
 # Capture from iOS Shortcuts
 
-Install the [shared Idea Queue Shortcut](https://www.icloud.com/shortcuts/5a8a5621902f4eeca0a761355b0d7e83) from the desktop sidebar or Settings → Capture with iOS Shortcuts. This template has a blank Authorization header and no import questions. After installing, edit **Get Contents of URL → Headers → Authorization** and paste the entire value copied by **Copy authorization**, including `Bearer `. Do not paste only the raw token.
+Install the [shared Idea Queue Template](https://www.icloud.com/shortcuts/ace61478ef2547c68fb6341b2e522e24) from the desktop sidebar or Settings → Capture with iOS Shortcuts. This template saves thoughts locally, syncs when run on Wi-Fi, and clears the queue after confirmed success. Its Authorization header is blank. After installing, edit **Get Contents of URL → Headers → Authorization** and paste the entire value copied by **Copy authorization**, including `Bearer `, as plain text without leading/trailing whitespace. Do not paste only the raw token.
 
-On an iPhone with an Action button, open **Settings → Action Button → Shortcut → Idea Queue**. [Apple's Action button guide](https://support.apple.com/guide/iphone/use-and-customize-the-action-button-iphe89d61d66/ios) describes this setting.
+On an iPhone with an Action button, open **Settings → Action Button → Shortcut** and select the installed Idea Queue Template (or rename it Idea Queue). [Apple's Action button guide](https://support.apple.com/guide/iphone/use-and-customize-the-action-button-iphe89d61d66/ios) describes this setting.
 
 To make a future template ask for authorization during installation, add a setup/import question to the Shortcut on your iPhone and share that version. Keep the default answer blank; recipients paste their own authorization. Shared iCloud copies cannot be edited by this website. See [Apple's import-question guide](https://support.apple.com/en-ca/guide/shortcuts/apdf330fd3a0/ios).
 
@@ -12,7 +12,7 @@ Vercel needs `SUPABASE_URL` and `SUPABASE_ANON_KEY`, using the same project URL 
 
 Sign into IdeaQueue and create a Shortcut token in Settings. Copy authorization when it appears; the copied value includes the required Bearer prefix. Only the token's SHA-256 hash remains in the database, so it cannot be shown again. Each token belongs to the account that created it. Revoke a token in Settings if you stop using the Shortcut.
 
-In Apple's Shortcuts:
+For an online-only Shortcut using the separate `/api/ideas` endpoint:
 
 1. Add **Dictate Text** or **Ask for Input**.
 2. Add **Get Contents of URL**, pointing to `https://YOUR-VERCEL-DOMAIN/api/ideas`.
@@ -26,10 +26,12 @@ Only `text`, `context`, `category`, `priority`, and `color` are accepted in the 
 
 ## Offline outbox
 
-The web app needs a connection to load, but a Shortcut can capture without one. Configure a local outbox so the action button never depends on service:
+The shared template includes the complete offline flow; recipients do not need to assemble it. On first use, grant file permissions and select their own **On My iPhone** destination in **Create Folder** if the imported folder reference is unavailable. The queue is local; it does not require iCloud Drive.
 
-1. In your personal copy of the Shortcut, keep the type/dictate menu and its `IdeaText` variable. Replace the current **Get Contents of URL** action with a **Text** action whose value is `{"text":"IdeaText"}` using the blue `IdeaText` variable token, then add **Append to File**. Give it the Text result, turn on **Append New Line**, and save it to `On My iPhone/Shortcuts/IdeaQ/outbox.ndjson`. Choose **On My iPhone**, rather than iCloud Drive, when Shortcuts asks where to save it.
-2. Add a second menu choice named **Sync saved ideas**. Its actions are: **Get File** at `Shortcuts/IdeaQ/outbox.ndjson` from **On My iPhone**; **Get Contents of File**; then **Get Contents of URL** with the configuration below. Set its request body to JSON with one key, `outbox`, whose value is the contents-of-file variable.
+1. **Create Folder** creates/reuses `On My iPhone/IdeaQ`; its output is stored as `QueueFolder`.
+2. The type/dictate menu stores `IdeaText`. A **Dictionary** with one `text` entry is converted to Text, so quotation marks and line breaks in thoughts are escaped as JSON.
+3. **Get File from QueueFolder** at `outbox.txt` has **Error If Not Found** off. If a file is returned, **Append to Text File** appends the dictionary Text with **Make New Line** on. Otherwise, **Save File** creates `outbox.txt` from that Text without overwriting existing files.
+4. After saving locally, **Get Wi-Fi Network Name → If Network Details has any value** runs the sync branch. This reads the complete `outbox.txt` and POSTs its Text as the sole `outbox` field:
 
    ```text
    URL: https://ideaqueue.vercel.app/api/sync
@@ -41,10 +43,11 @@ The web app needs a connection to load, but a Shortcut can capture without one. 
      {"outbox": Contents of File}
    ```
 
-3. After that request, add **Delete File** for the same outbox file. Do this only on the success path. If the request fails or there is no service, leave the file in place and try **Sync saved ideas** later.
-4. For automatic delivery, create a personal automation in Shortcuts: **Automation → Wi-Fi → Any Network → Runs Immediately**, then add **Run Shortcut** for this Shortcut and pass it the text `sync`. In the Shortcut, send that input to the **Sync saved ideas** branch before showing the capture menu. Apple keeps personal automations on the device where you create them, so set this up on each phone.
+5. **Get Dictionary Value** reads `saved` from the response. An **If**, treating it as a Number, checks **greater than 0**. Only then does **Save File** overwrite `outbox.txt` with a blank line. The file remains in place for future capture; no manual clearing is needed. Failed requests retain the queue.
 
-`POST /api/sync` accepts up to 50 newline-separated JSON captures at a time and uses the same create-only token checks as `/api/ideas`. It validates the entire local file before making any writes, then returns `201 {"saved": number}` when every capture was accepted. Delete the file only after that response. A network interruption after the server accepts a request but before the phone receives the response can cause a duplicate on retry; the outbox protects the thought from being lost.
+Sync happens when the Shortcut is run on Wi-Fi. Joining Wi-Fi alone does not trigger it, and cellular alone does not sync. A Wi-Fi connection does not guarantee internet access. Capture another thought on working Wi-Fi to retry the saved queue. The template always opens its capture menu; it does not implement a separate sync-only input.
+
+`POST /api/sync` accepts up to 50 newline-separated JSON captures at a time and uses the same create-only token checks as `/api/ideas`. It validates the entire local file before making any writes, then returns `201 {"saved": number}` when every capture was accepted. Queues exceeding 50 ideas or 64 KiB are rejected and retained. A partial server failure or interruption after saving but before the phone receives the response can cause duplicates on retry; sync is not an atomic or deduplicated batch.
 
 A Shortcut token grants permission to create notes for its owner. It cannot list, edit or pop notes, impersonate another account, or manage other tokens. Do not put it in a public URL or shared Shortcut. The public Supabase key itself grants no note access. Invalid/revoked capture tokens return 401. The endpoint intentionally does not enable browser cross-origin requests; Shortcuts sends a native HTTP request.
 

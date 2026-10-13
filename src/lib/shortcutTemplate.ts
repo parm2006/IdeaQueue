@@ -1,1 +1,1 @@
-export const shortcutTemplateUrl = 'https://www.icloud.com/shortcuts/5a8a5621902f4eeca0a761355b0d7e83';
+export const shortcutTemplateUrl = 'https://www.icloud.com/shortcuts/ace61478ef2547c68fb6341b2e522e24';

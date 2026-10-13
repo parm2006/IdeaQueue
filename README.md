@@ -2,7 +2,7 @@
 
 A responsive sticky-note idea box for phone and desktop. One **Add idea** button captures typed or dictated thoughts. The highest-priority note stays visible; **Pop idea** reviews it and shows the next note. **Find out ↗** searches Google for that note's text.
 
-[Open IdeaQueue](https://ideaqueue.vercel.app) · [GitHub repository](https://github.com/parm2006/IdeaQueue) · [Install the iPhone Shortcut](https://www.icloud.com/shortcuts/5a8a5621902f4eeca0a761355b0d7e83)
+[Open IdeaQueue](https://ideaqueue.vercel.app) · [GitHub repository](https://github.com/parm2006/IdeaQueue) · [Install the iPhone Shortcut](https://www.icloud.com/shortcuts/ace61478ef2547c68fb6341b2e522e24)
 
 The Vercel app uses **Supabase Postgres + Supabase Auth with Google OAuth**. Everyone signs into their own account; row-level security isolates their notes. Firebase is not used. Signed-out visitors get a sign-in screen. There is no anonymous note workspace or browser-only fallback.
 
@@ -50,7 +50,7 @@ npm run build
 
 On iPhone, open the Vercel URL in Safari → Share → Add to Home Screen. Mobile navigation uses Box/Reviewed and a bucket selector; optional capture fields are collapsed. Pop idea and Find out occupy equal halves of the action row. External search behavior is controlled by the browser and OS. Dictation requires browser/device support and microphone permission; keyboard dictation is a fallback.
 
-The desktop sidebar and Settings include the [shared iPhone Shortcut](https://www.icloud.com/shortcuts/5a8a5621902f4eeca0a761355b0d7e83). Settings lets each authenticated user create/revoke a personal, create-only token. **Copy authorization** includes the required Bearer prefix; paste it into the template's blank Authorization header. POST JSON to `/api/ideas` with `Authorization: Bearer YOUR_CAPTURE_TOKEN`. Owner and capture time are set by the database. The raw token is shown once; only its hash is stored. The Shortcut can also save captures first in an on-device outbox and sync them later through `/api/sync`; see [capture implementation details](docs/SHORTCUTS.md#offline-outbox).
+The desktop sidebar and Settings include the [shared iPhone Shortcut](https://www.icloud.com/shortcuts/ace61478ef2547c68fb6341b2e522e24). Settings lets each authenticated user create/revoke a personal, create-only token. **Copy authorization** includes the required Bearer prefix; paste it into the template's blank Authorization header. The template saves each thought to `On My iPhone/IdeaQ/outbox.txt`, sends the complete queue to `/api/sync` when run on Wi-Fi, and clears its contents only after a positive saved count. Failed requests preserve the queue. Owner and capture time are set by the database at sync time. The raw token is shown once; only its hash is stored. See [capture implementation details](docs/SHORTCUTS.md#offline-outbox).
 
 On supported iPhones, assign **Idea Queue** under **Settings → Action Button → Shortcut**. The shared template intentionally contains no user's authorization.
 

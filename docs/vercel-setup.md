@@ -42,7 +42,7 @@ Open the Vercel site, choose **Continue with Google**, and save a note. Open the
 
 ## 5. Set up your personal Shortcut (optional)
 
-After signing in, open Settings → Capture with iOS Shortcuts → Create capture token → Copy authorization. Install the linked Idea Queue Shortcut, then paste the copied value into Get Contents of URL → Headers → Authorization. The copied value includes `Bearer `; it is shown once and is not stored in browser storage. On supported iPhones, choose Idea Queue under Settings → Action Button → Shortcut.
+After signing in, open Settings → Capture with iOS Shortcuts → Create capture token → Copy authorization. Install the linked Idea Queue Template, then paste the copied value into Get Contents of URL → Headers → Authorization. The copied value includes `Bearer `; it is shown once and is not stored in browser storage. Allow local file access and select your own On My iPhone destination if prompted. The template creates a local queue, syncs when run on Wi-Fi, and clears only after a positive saved count. On supported iPhones, choose the installed template under Settings → Action Button → Shortcut.
 
 Use Dictate Text, then Get Contents of URL:
 
