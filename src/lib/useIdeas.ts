@@ -82,7 +82,7 @@ export function useIdeas() {
     if (epoch !== workspaceEpoch.current) throw new Error('Your account changed. Reopen your workspace to check your notes.');
   };
 
-  const save = async (idea: Idea) => {
+  const save = async (idea: Idea, editing = false) => {
     const owner = requireUser();
     const epoch = workspaceEpoch.current;
     let result: Idea;
@@ -90,7 +90,7 @@ export function useIdeas() {
     else {
       if (!supabase) throw new Error('Cloud storage is unavailable.');
       const row = { ...idea, user_id: owner.id };
-      const existing = ideas.some(current => current.id === idea.id);
+      const existing = editing || ideas.some(current => current.id === idea.id);
       const write = existing
         ? supabase.from('ideas').update(row).eq('id', idea.id)
         : supabase.from('ideas').insert(row);
