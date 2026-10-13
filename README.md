@@ -35,7 +35,7 @@ npm test
 npm run build
 ```
 
-`npm run build` outputs the Vite website into `dist`. Vercel builds the site and runs `api/ideas.ts` as a Node function. Vercel's GitHub integration deploys changes to the repository's main branch. `.env.local`, database files, old-source archives, and temporary QA files are excluded from Git and Vercel uploads.
+`npm run build` outputs the Vite website into `dist`. Vercel builds the site and runs `api/ideas.ts` and `api/sync.ts` as Node functions. Vercel's GitHub integration deploys changes to the repository's main branch. `.env.local`, database files, old-source archives, and temporary QA files are excluded from Git and Vercel uploads.
 
 ## Queue ordering
 
@@ -52,7 +52,9 @@ On iPhone, open the Vercel URL in Safari → Share → Add to Home Screen. Mobil
 
 The desktop sidebar and Settings include the [shared iPhone Shortcut](https://www.icloud.com/shortcuts/ace61478ef2547c68fb6341b2e522e24). Settings lets each authenticated user create/revoke a personal, create-only token. **Copy authorization** includes the required Bearer prefix; paste it into the template's blank Authorization header. The template saves each thought to `On My iPhone/IdeaQ/outbox.txt`, sends the complete queue to `/api/sync` when run on Wi-Fi, and clears its contents only after a positive saved count. Failed requests preserve the queue. Owner and capture time are set by the database at sync time. The raw token is shown once; only its hash is stored. See [capture implementation details](docs/SHORTCUTS.md#offline-outbox).
 
-On supported iPhones, assign **Idea Queue** under **Settings → Action Button → Shortcut**. The shared template intentionally contains no user's authorization.
+On supported iPhones, select the installed **Idea Queue Template** under **Settings → Action Button → Shortcut** (or rename it Idea Queue). Allow local file access and select your own **On My iPhone** destination if the imported folder reference needs resetting. The shared template intentionally contains no user's authorization.
+
+The Shortcut retries its queue when run on Wi-Fi; reconnecting alone does not launch a background sync. Each sync accepts at most 50 ideas and a 64 KiB request body. The web app itself still requires a connection. Retries after partial writes or a lost server response can create duplicates; batches are not atomic or deduplicated. Queued ideas receive their database timestamp when synced, so priority aging starts then.
 
 The capture JSON accepts only `text` (required), `context`, `category`, `priority`, and `color`. Extra fields return HTTP 400; do not send `user_id`, an ID, capture dates, reviewed status, or empty placeholder fields from the Shortcut editor. The database supplies ownership and capture time. Successful capture returns HTTP 201 with the new note's ID and timestamp.
 
