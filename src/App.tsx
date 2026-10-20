@@ -1,11 +1,12 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { ArrowDownToLine, ArrowUpRight, BookOpen, Box, Check, Cloud, Code2, Download, HelpCircle, Leaf, LoaderCircle, LogOut, Mic, MoreHorizontal, Plus, RefreshCw, Settings2, Smartphone, StickyNote, Upload, X } from 'lucide-react';
-import { categories, colors, createIdea, effectivePriority, inferCategory, PriorityQueue, type Category, type Idea, type NoteColor } from './lib/queue';
+import { categories, colors, createIdea, effectivePriority, inferCategory, orderIdeas, type Category, type Idea, type NoteColor } from './lib/queue';
 import { useIdeas } from './lib/useIdeas';
 import { exportIdeas, readLocal, validateImport } from './lib/storage';
 import { supabase, signInWithGoogle } from './lib/supabase';
 import { AuthGate } from './components/AuthGate';
 import { AccountSettings } from './components/AccountSettings';
+import { IdeaNotebook } from './components/IdeaNotebook';
 import { shortcutTemplateUrl } from './lib/shortcutTemplate';
 import { speechConstructor, startDictation, type DictationStatus } from './lib/dictation';
 
@@ -14,9 +15,9 @@ type Modal = 'new' | 'settings' | 'help' | Idea | null;
 const categoryIcon = (c: Category) => c === 'Computer science' ? <Code2 size={17}/> : c === 'Reading' ? <BookOpen size={17}/> : c === 'Personal' ? <Leaf size={17}/> : <span className={`bucket-dot ${c.replaceAll(' ', '-').toLowerCase()}`}/>;
 const captureTime = (date: string) => new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }).format(new Date(date));
 
-function FocusNote({ idea, now, onEdit }: { idea: Idea; now: number; onEdit: () => void }) {
-  return <article className={`focus-note note-${idea.color}`} aria-label="Upcoming idea">
-    <div className="focus-note-top"><span className="note-category">{idea.category}</span><span className="focus-note-label">UP NEXT</span><button className="icon-button" aria-label="Edit upcoming idea" onClick={onEdit}><MoreHorizontal size={19}/></button></div>
+function FocusNote({ idea, now, rank, onEdit }: { idea: Idea; now: number; rank: number; onEdit: () => void }) {
+  return <article className={`focus-note note-${idea.color}`} aria-label={rank === 0 ? 'Upcoming idea' : 'Queued idea'}>
+    <div className="focus-note-top"><span className="note-category">{idea.category}</span><span className="focus-note-label">{rank === 0 ? 'UP NEXT' : `PRIORITY ${rank + 1}`}</span><button className="icon-button" aria-label="Edit this idea" onClick={onEdit}><MoreHorizontal size={19}/></button></div>
     <h3>{idea.text}</h3>{idea.context && <p className="focus-context">{idea.context}</p>}
     <div className="focus-note-footer"><time dateTime={idea.created_at}>Captured {captureTime(idea.created_at)}</time><span title={`Starting priority: ${idea.priority}/10`}>{effectivePriority(idea, now)} <small>pts</small></span></div>
   </article>;
@@ -31,13 +32,15 @@ export default function App() {
   const [toast, setToast] = useState('');
   const [actionError, setActionError] = useState('');
   const [clock, setClock] = useState(Date.now);
+  const [browsedId, setBrowsedId] = useState<string | null>(null);
   const importRef = useRef<HTMLInputElement>(null);
   const dialogRef = useRef<HTMLDialogElement>(null);
   const active = store.ideas.filter(i => !i.reviewed_at);
   const reviewed = store.ideas.filter(i => i.reviewed_at).sort((a, b) => Date.parse(b.reviewed_at!) - Date.parse(a.reviewed_at!));
-  const scopedQueue = active.filter(i => bucket === 'all' || i.category === bucket);
-  const queueCount = scopedQueue.length;
-  const focused = new PriorityQueue(scopedQueue).peek();
+  const orderedQueue = useMemo(() => orderIdeas(store.ideas.filter(i => !i.reviewed_at && (bucket === 'all' || i.category === bucket))), [store.ideas, bucket]);
+  const queueCount = orderedQueue.length;
+  const pageIndex = Math.max(0, orderedQueue.findIndex(idea => idea.id === browsedId));
+  const focused = orderedQueue[pageIndex];
 
   useEffect(() => { const interval = setInterval(() => setClock(Date.now()), 60000); return () => clearInterval(interval); }, []);
   useEffect(() => { if (!toast) return; const timer = setTimeout(() => setToast(''), 5000); return () => clearTimeout(timer); }, [toast]);
@@ -46,7 +49,7 @@ export default function App() {
     const keyboard = (e: KeyboardEvent) => { if (e.key.toLowerCase() === 'k' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); if (store.ready && !busy && !modal) setModal('new'); } };
     window.addEventListener('keydown', keyboard); return () => window.removeEventListener('keydown', keyboard);
   }, [busy, modal, store.ready]);
-  useEffect(() => { setModal(null); setScreen('queue'); setBucket('all'); setActionError(''); setToast(''); }, [store.user?.id]);
+  useEffect(() => { setModal(null); setScreen('queue'); setBucket('all'); setBrowsedId(null); setActionError(''); setToast(''); }, [store.user?.id]);
 
   async function run(action: () => Promise<void>) {
     if (busy) return;
@@ -56,11 +59,16 @@ export default function App() {
   }
   const popNext = () => run(async () => {
     if (!focused) return;
-    const popped = await store.pop(bucket === 'all' ? undefined : bucket, focused.id);
-    if (!popped) setToast('This box is empty.');
+    if (pageIndex === 0) {
+      const popped = await store.pop(bucket === 'all' ? undefined : bucket, focused.id);
+      if (!popped) setToast('This box is empty.');
+    } else {
+      await store.save({ ...focused, reviewed_at: new Date().toISOString() }, true);
+    }
+    setBrowsedId(null);
   });
   const navigate = (view: Screen, category: Category | 'all' = 'all') => {
-    setScreen(view); setBucket(category); setActionError('');
+    setScreen(view); setBucket(category); setBrowsedId(null); setActionError('');
   };
   const importFile = async (file?: File) => {
     if (!file) return;
@@ -91,18 +99,18 @@ export default function App() {
       <header className="topbar"><span className="topbar-caption"><span className="tiny-star">✳</span> YOUR PERSONAL THINKING SPACE</span><div><span className="today">{new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', timeZone: 'America/Los_Angeles' }).format(new Date())}</span><button className="icon-button" aria-label="Refresh notes" disabled={store.loading || busy} onClick={() => void store.refresh()}><RefreshCw size={17} className={store.loading ? 'spinning' : ''}/></button><button className="avatar" aria-label="Open account and storage settings" onClick={() => setModal('settings')}>{store.user?.email?.[0]?.toUpperCase() || 'P'}</button></div></header>
       <main>
         <div className="mobile-brand"><span><StickyNote size={20}/> ideaqueue.</span><button className="icon-button" aria-label="Settings" onClick={() => setModal('settings')}><Settings2 size={19}/></button></div>
-        <section className="page-heading"><div><div className="eyebrow">A CLEARER MIND STARTS HERE</div><h1><span className="desktop-title">{screen === 'reviewed' ? 'Thoughts, taken further.' : 'Room for one thought.'}</span><span className="phone-title">{screen === 'reviewed' ? 'Reviewed' : 'Your idea box'}</span></h1><p>{screen === 'reviewed' ? 'Revisit or restore reviewed ideas. Choose their retention in Settings.' : 'Your highest-priority thought is ready. Pop it to move on.'}</p></div><button className="button capture-button" aria-label="Add idea" onClick={() => setModal('new')} disabled={busy || !store.ready}><Plus size={19}/> Add idea <span className="button-shortcut">⌘ K</span></button></section>
+        <section className="page-heading"><div><div className="eyebrow">A CLEARER MIND STARTS HERE</div><h1><span className="desktop-title">{screen === 'reviewed' ? 'Thoughts, taken further.' : 'Room for one thought.'}</span><span className="phone-title">{screen === 'reviewed' ? 'Reviewed' : 'Your idea box'}</span></h1><p>{screen === 'reviewed' ? 'Revisit or restore reviewed ideas. Choose their retention in Settings.' : 'Start with your highest priority. Flip through the pages to explore.'}</p></div><button className="button capture-button" aria-label="Add idea" onClick={() => setModal('new')} disabled={busy || !store.ready}><Plus size={19}/> Add idea <span className="button-shortcut">⌘ K</span></button></section>
         <nav className="mobile-nav" aria-label="Mobile workspace"><button className={screen === 'queue' ? 'active' : ''} onClick={() => navigate('queue')}><Box size={15}/> Idea box <span>{active.length}</span></button><button className={screen === 'reviewed' ? 'active' : ''} onClick={() => navigate('reviewed')}><Check size={15}/> Reviewed <span>{reviewed.length}</span></button><select aria-label="Filter by bucket" value={bucket} disabled={busy} onChange={e => navigate('queue', e.target.value as Category | 'all')}><option value="all">All buckets</option>{categories.map(c => <option key={c}>{c}</option>)}</select></nav>
         {(store.error || (actionError && !modal)) && <div className="error-banner" role="alert">{store.error || actionError}<button onClick={() => { setActionError(''); void store.refresh(); }}>Retry</button></div>}
         {screen === 'queue' ? <section className="idea-section">
-          <div className="section-heading"><div><h2>{bucket === 'all' ? 'Your idea box' : bucket}<span className="count-chip">{queueCount}</span></h2><span className="section-description">{queueCount} {queueCount === 1 ? 'thought waiting' : 'thoughts waiting'} · highest priority comes out first</span></div></div>
+          <div className="section-heading"><div><h2>{bucket === 'all' ? 'Your idea box' : bucket}<span className="count-chip">{queueCount}</span></h2><span className="section-description">{queueCount} {queueCount === 1 ? 'thought waiting' : 'thoughts waiting'} · pages ordered by priority</span></div></div>
           <div className="idea-box pop-box">
             <div className="pop-stage">
-              {store.loading && !store.ideas.length ? <div className="empty-box"><LoaderCircle className="spinning" size={30}/><h3>Opening your idea box...</h3></div> : focused ? <FocusNote idea={focused} now={clock} onEdit={() => setModal(focused)}/> : <div className="closed-box-state"><div className="closed-note-stack" aria-hidden="true"><span/><span/><span><StickyNote size={36}/></span></div><div className="eyebrow">OUT OF YOUR HEAD. SAFE IN HERE.</div><h3>Your idea box is empty.</h3><p>Use Add idea to put a thought in the box.</p></div>}
+              {store.loading && !store.ideas.length ? <div className="empty-box"><LoaderCircle className="spinning" size={30}/><h3>Opening your idea box...</h3></div> : focused ? <IdeaNotebook key={bucket} index={pageIndex} count={queueCount} disabled={busy || !store.ready} onPageChange={index => setBrowsedId(orderedQueue[index].id)}><FocusNote idea={focused} now={clock} rank={pageIndex} onEdit={() => setModal(focused)}/></IdeaNotebook> : <div className="closed-box-state"><div className="closed-note-stack" aria-hidden="true"><span/><span/><span><StickyNote size={36}/></span></div><div className="eyebrow">OUT OF YOUR HEAD. SAFE IN HERE.</div><h3>Your idea box is empty.</h3><p>Use Add idea to put a thought in the box.</p></div>}
             </div>
             <div className="box-lip"><span className="box-label"><Box size={15}/>{bucket === 'all' ? 'THE IDEA BOX' : bucket.toUpperCase()}</span><span className="box-message">A little less to think about.</span><span className="box-rivet"/></div>
           </div>
-          <div className="pop-actions"><div className="note-action-row"><button className="button pop-button" disabled={!queueCount || busy || !store.ready} onClick={() => void popNext()}>{busy ? <LoaderCircle size={17} className="spinning"/> : <ArrowDownToLine size={17}/>} <span className="desktop-pop-label">Pop next idea</span><span className="phone-pop-label">Pop idea</span></button>{focused && !busy ? <a className="button find-out-button" href={`https://www.google.com/search?${new URLSearchParams({ q: focused.text })}`} target="_blank" rel="noopener noreferrer" title="Search this idea on Google in a new browser tab">Find out <ArrowUpRight size={17}/></a> : <button className="button find-out-button" disabled title="No upcoming idea to search">Find out <ArrowUpRight size={17}/></button>}</div><p>{focused ? 'Pop this idea to save it in Reviewed and show the next.' : 'Your queue is empty for now.'}</p></div>
+          <div className="pop-actions"><div className="note-action-row"><button className="button pop-button" disabled={!queueCount || busy || !store.ready} onClick={() => void popNext()}>{busy ? <LoaderCircle size={17} className="spinning"/> : <ArrowDownToLine size={17}/>} <span className="desktop-pop-label">Pop idea</span><span className="phone-pop-label">Pop idea</span></button>{focused && !busy ? <a className="button find-out-button" href={`https://www.google.com/search?${new URLSearchParams({ q: focused.text })}`} target="_blank" rel="noopener noreferrer" title="Search this idea on Google in a new browser tab">Find out <ArrowUpRight size={17}/></a> : <button className="button find-out-button" disabled title="No upcoming idea to search">Find out <ArrowUpRight size={17}/></button>}</div><p>{focused ? 'Pop the idea on this page to move it to Reviewed. Browsing keeps it in your box.' : 'Your queue is empty for now.'}</p></div>
           <div className="workspace-status">{store.user ? <><Cloud size={13}/> Your private cloud workspace</> : <><span className="local-indicator"/> Saved in this browser · starts with 7 example notes</>}</div>
         </section> : <section className="idea-section reviewed-section"><div className="section-heading"><div><h2>The reviewed tray<span className="count-chip">{reviewed.length}</span></h2><span className="section-description">Revisit or restore your old ideas.</span></div></div>{reviewed.length ? <div className="reviewed-history">{reviewed.map(idea => <button key={idea.id} className="list-note" onClick={() => setModal(idea)}><span className={`list-note-icon note-${idea.color}`}><StickyNote size={22}/></span><span className="list-note-text"><strong>{idea.text}</strong><span>{idea.category} · Popped {captureTime(idea.reviewed_at!)}</span></span><ArrowUpRight size={17}/></button>)}</div> : <div className="empty-box reviewed-empty"><Check size={28}/><h3>A fresh tray, for now.</h3><p>Ideas appear here after you pop them out of the box.</p></div>}</section>}
         <footer className="page-footer"><span><Leaf size={14}/> Less in your head. More room to think.</span><button onClick={() => setModal('help')}>How it works <ArrowUpRight size={13}/></button></footer>
@@ -112,7 +120,7 @@ export default function App() {
     <dialog ref={dialogRef} className="app-dialog" onCancel={() => setModal(null)} onClick={e => { if (e.target === dialogRef.current) setModal(null); }}><div className="dialog-content"><button className="icon-button dialog-close" aria-label="Close dialog" onClick={() => setModal(null)}><X size={21}/></button>
       {(modal === 'new' || (modal && typeof modal === 'object')) && <IdeaEditor key={typeof modal === 'object' ? modal.id : modal} idea={typeof modal === 'object' ? modal : undefined} busy={busy || !store.ready} onSave={idea => run(async () => { await store.save(idea, !!modal && typeof modal === 'object'); setModal(null); setToast('Saved in your idea box.'); })} onReview={idea => run(async () => { await store.save({ ...idea, reviewed_at: idea.reviewed_at ? null : new Date().toISOString() }, true); setModal(null); setToast(idea.reviewed_at ? 'Back in your box.' : 'Saved in Reviewed.'); })}/>}
       {modal === 'settings' && (store.hosted ? <HostedSettings email={store.user?.email} busy={busy} onMoveLocal={() => run(async () => { const count = await store.importNotes(readLocal() ?? []); setToast(`Moved ${count} browser notes online.`); })} onExport={() => exportIdeas(store.ideas)} onImport={() => importRef.current?.click()}/> : <AccountSettings email={store.user?.email} busy={busy || !store.ready} hourlyCleanup={store.hourlyCleanup} onCleanupChange={enabled => void run(() => store.setReviewedCleanup(enabled))} onSignOut={() => void run(async () => { const { error } = await supabase!.auth.signOut(); if (error) throw error; })} onExport={() => exportIdeas(store.ideas)} onImport={() => importRef.current?.click()}/>)}
-      {modal === 'help' && <div className="help-content"><span className="dialog-kicker"><Box size={18}/> A LITTLE GUIDE</span><h2>One thought at a time.</h2><ol><li><strong>Add an idea.</strong><span>Use the one Add idea button to type or record a thought. Choose a bucket, or let the app suggest one. Context is yours to add.</span></li><li><strong>See what’s next.</strong><span>Your highest-priority idea is always shown. The rest stay in the box. Priority grows daily without rewriting your notes; starting priority breaks ties between adjusted days.</span></li><li><strong>Pop it when you’re ready.</strong><span>Pop moves the visible idea to Reviewed and immediately shows the next highest-priority idea. Find out searches the visible note. Reviewed clears hourly by default. Turn hourly cleanup off in Settings to keep each note for 7 days after review.</span></li></ol><p className="help-tip"><kbd>Ctrl / ⌘ K</kbd> opens the same Add idea dialog.</p><button className="button" onClick={() => setModal(null)}>Got it <Check size={16}/></button></div>}
+      {modal === 'help' && <div className="help-content"><span className="dialog-kicker"><Box size={18}/> A LITTLE GUIDE</span><h2>One thought at a time.</h2><ol><li><strong>Add an idea.</strong><span>Use the one Add idea button to type or record a thought. Choose a bucket, or let the app suggest one. Context is yours to add.</span></li><li><strong>See what’s next.</strong><span>The notebook opens on your highest-priority idea. Swipe or scroll vertically, use the arrows, or press the up/down arrow keys to browse the rest. Back to top returns to your highest priority. Priority grows daily without rewriting your notes; starting priority breaks ties between adjusted days.</span></li><li><strong>Pop it when you’re ready.</strong><span>Pop moves the idea on the current page to Reviewed and returns to the highest remaining priority. Find out searches the visible note. Reviewed clears hourly by default. Turn hourly cleanup off in Settings to keep each note for 7 days after review.</span></li></ol><p className="help-tip"><kbd>Ctrl / ⌘ K</kbd> opens the same Add idea dialog.</p><button className="button" onClick={() => setModal(null)}>Got it <Check size={16}/></button></div>}
       {actionError && <div className="dialog-error" role="alert">{actionError}</div>}
     </div></dialog>
     {toast && <div className="toast" role="status"><span><Check size={17}/></span>{toast}<button className="icon-button" aria-label="Dismiss notification" onClick={() => setToast('')}><X size={16}/></button></div>}

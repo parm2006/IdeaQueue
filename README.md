@@ -1,6 +1,6 @@
 # IdeaQueue
 
-A responsive sticky-note idea box for phone and desktop. One **Add idea** button captures typed or dictated thoughts. The highest-priority note stays visible; **Pop idea** reviews it and shows the next note. **Find out ↗** searches Google for that note's text.
+A responsive idea box for phone and desktop, with a spiral notebook for browsing your thoughts. One **Add idea** button captures typed or dictated thoughts. The notebook opens on the highest-priority note; **Pop idea** reviews the displayed note and returns to the highest remaining priority. **Find out ↗** searches Google for that note's text.
 
 [Open IdeaQueue](https://ideaqueue.vercel.app) · [GitHub repository](https://github.com/parm2006/IdeaQueue) · [Install the iPhone Shortcut](https://www.icloud.com/shortcuts/ace61478ef2547c68fb6341b2e522e24)
 
@@ -10,10 +10,12 @@ The Vercel app uses **Supabase Postgres + Supabase Auth with Google OAuth**. Eve
 
 1. Open the live app and continue with Google. Each account starts with its own private idea box.
 2. Choose **Add idea** to type or dictate a thought. Bucket, starting priority, context, and color are optional.
-3. The highest-priority upcoming thought stays visible. **Pop idea** moves it to Reviewed and shows the next; **Find out** opens a Google search for that thought.
+3. Start with the highest-priority thought, then swipe up/down or scroll over the notebook to browse other ideas in priority order. **Pop idea** moves the displayed thought to Reviewed and returns to the highest remaining priority; **Find out** opens a Google search for that thought.
 4. Use Reviewed to revisit or restore a note. Settings includes your reviewed-note cleanup preference, backups, the iPhone Shortcut installer, and personal capture tokens. Add idea stays available on both tabs.
 
 The live app is configured for Google sign-in and Supabase storage. The setup instructions below are for developers deploying another instance.
+
+The notebook also supports previous/next buttons, up/down arrow keys, and Page Up/Page Down. **Back to top** or Home returns to the highest priority; reopening the idea box or changing buckets starts there too. Browsing makes no database writes. Long notes scroll within their page before another gesture turns the page. Page-turn animations respect reduced-motion preferences.
 
 ## Stack
 
@@ -75,11 +77,14 @@ A private database trigger checks allocated database size before inserting notes
 
 Run `npm test` and `npm run build` for automated checks and the production build. `supabase/shortcuts.test.sql` exercises two-account isolation, token ownership, revocation, and capture defaults in an isolated PostgreSQL database; its fixtures roll back. It is a psql test script, not part of production setup. Phone and desktop browser checks verified the sign-in gate, upcoming-note behavior, installer link, complete authorization clipboard value, and absence of token persistence in browser storage. Physical iPhone dictation and Action Button behavior depend on device setup.
 
+Chromium checks at phone and desktop sizes cover notebook touch swipes, wheel and keyboard navigation, priority resets, browsing without writes, popping the displayed note, long-note scrolling, narrow layouts, and reduced motion. Physical iPhone Safari gestures still need device verification.
+
 `supabase/maintenance.test.sql` verifies capacity rejection and preservation of pending notes. `supabase/reviewed-retention.test.sql` verifies account isolation, both retention modes, the exact 7-day review-age boundary, and re-enabling hourly deletion. Both are transactional scratch-database tests, not production setup scripts. Phone and desktop checks with synthetic accounts also verified that the Settings preference persists after reload and Add idea remains on both tabs.
 
 ## Source layout
 
 - `src/App.tsx`: responsive box, capture sheet, upcoming note, and reviewed tray.
+- `src/components/IdeaNotebook.tsx`: priority-ordered notebook navigation and page-turn animation.
 - `src/lib/useIdeas.ts`: authenticated note reads/writes and account transitions.
 - `src/lib/supabase.ts`: Google sign-in and PKCE session handling.
 - `supabase/schema.sql`: notes, row-level security, indexes, atomic pop.
