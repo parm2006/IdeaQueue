@@ -19,9 +19,9 @@ const captureTime = (date: string) => new Intl.DateTimeFormat(undefined, { month
 
 function FocusNote({ idea, now, rank, onEdit }: { idea: Idea; now: number; rank: number; onEdit: () => void }) {
   return <article className={`focus-note note-${bucketColors[idea.category]}`} aria-label={rank === 0 ? 'Upcoming idea' : 'Queued idea'}>
-    <div className="focus-note-top"><span className="note-category">{idea.category}</span><button className="icon-button" aria-label="Edit this idea" onClick={onEdit}><MoreHorizontal size={19}/></button></div>
+    <div className="focus-note-top"><span className="note-category">{idea.category}</span><span className="note-page-points" aria-label={`Page ${rank + 1}, ${effectivePriority(idea, now)} priority points`} title={`Starting priority: ${idea.priority}/10`}><span>{rank + 1}</span><span className="note-page-divider" aria-hidden="true">|</span><span>{effectivePriority(idea, now)}<small>pts</small></span></span><button className="icon-button" aria-label="Edit this idea" onClick={onEdit}><MoreHorizontal size={19}/></button></div>
     <h3>{idea.text}</h3>{idea.context && <p className="focus-context">{idea.context}</p>}
-    <div className="focus-note-footer"><time dateTime={idea.created_at}>Captured {captureTime(idea.created_at)}</time><span title={`Starting priority: ${idea.priority}/10`}>{effectivePriority(idea, now)} <small>pts</small></span></div>
+    <div className="focus-note-footer"><time dateTime={idea.created_at}>Captured {captureTime(idea.created_at)}</time></div>
   </article>;
 }
 

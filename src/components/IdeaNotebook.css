@@ -10,7 +10,11 @@
 .notebook-preview+.notebook-preview{transform:translate(4px,12px) rotate(2deg);z-index:0}
 .notebook-sheet{position:absolute;inset:0;transform-origin:50% 0;backface-visibility:hidden;-webkit-backface-visibility:hidden}
 .notebook-sheet .focus-note{height:100%;width:100%;min-height:0;border-radius:5px;padding:44px 28px 22px;transform:none;animation:none;box-shadow:none;overflow-y:auto;overscroll-behavior-y:contain;scrollbar-width:thin;scrollbar-color:#7d836f66 transparent;display:flex;flex-direction:column;background-image:repeating-linear-gradient(transparent 0,transparent 29px,#7c80560b 29px,#7c80560b 30px);background-position:0 5px;scroll-padding-top:44px}
-.notebook-sheet .focus-note-top .icon-button{margin-left:auto}
+.notebook-current .focus-note{box-shadow:1px 5px 8px #29332338}
+.notebook-sheet .focus-note-top .icon-button{margin-left:0}
+.note-page-points{display:inline-flex;align-items:center;gap:8px;margin-left:auto;white-space:nowrap;font-size:14px;font-weight:600;color:#4e593f;font-variant-numeric:tabular-nums}
+.note-page-points small{font-size:10px;font-weight:400;margin-left:2px}
+.note-page-divider{font-weight:400;color:#697153}
 .notebook-sheet .focus-note-top,.notebook-sheet h3,.notebook-sheet .focus-context,.notebook-sheet .focus-note-footer{flex-shrink:0}
 .notebook-sheet .focus-note-top{margin-bottom:20px}
 .notebook-sheet .focus-note-footer{margin-top:auto;padding-top:18px;position:relative;top:6px}
