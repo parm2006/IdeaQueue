@@ -17,7 +17,7 @@ const captureTime = (date: string) => new Intl.DateTimeFormat(undefined, { month
 
 function FocusNote({ idea, now, rank, onEdit }: { idea: Idea; now: number; rank: number; onEdit: () => void }) {
   return <article className={`focus-note note-${idea.color}`} aria-label={rank === 0 ? 'Upcoming idea' : 'Queued idea'}>
-    <div className="focus-note-top"><span className="note-category">{idea.category}</span><span className="focus-note-label">{rank === 0 ? 'UP NEXT' : `PRIORITY ${rank + 1}`}</span><button className="icon-button" aria-label="Edit this idea" onClick={onEdit}><MoreHorizontal size={19}/></button></div>
+    <div className="focus-note-top"><span className="note-category">{idea.category}</span><button className="icon-button" aria-label="Edit this idea" onClick={onEdit}><MoreHorizontal size={19}/></button></div>
     <h3>{idea.text}</h3>{idea.context && <p className="focus-context">{idea.context}</p>}
     <div className="focus-note-footer"><time dateTime={idea.created_at}>Captured {captureTime(idea.created_at)}</time><span title={`Starting priority: ${idea.priority}/10`}>{effectivePriority(idea, now)} <small>pts</small></span></div>
   </article>;
@@ -106,7 +106,7 @@ export default function App() {
           <div className="section-heading"><div><h2>{bucket === 'all' ? 'Your idea box' : bucket}<span className="count-chip">{queueCount}</span></h2><span className="section-description">{queueCount} {queueCount === 1 ? 'thought waiting' : 'thoughts waiting'} · pages ordered by priority</span></div></div>
           <div className="idea-box pop-box">
             <div className="pop-stage">
-              {store.loading && !store.ideas.length ? <div className="empty-box"><LoaderCircle className="spinning" size={30}/><h3>Opening your idea box...</h3></div> : focused ? <IdeaNotebook key={bucket} index={pageIndex} count={queueCount} disabled={busy || !store.ready} onPageChange={index => setBrowsedId(orderedQueue[index].id)}><FocusNote idea={focused} now={clock} rank={pageIndex} onEdit={() => setModal(focused)}/></IdeaNotebook> : <div className="closed-box-state"><div className="closed-note-stack" aria-hidden="true"><span/><span/><span><StickyNote size={36}/></span></div><div className="eyebrow">OUT OF YOUR HEAD. SAFE IN HERE.</div><h3>Your idea box is empty.</h3><p>Use Add idea to put a thought in the box.</p></div>}
+              {store.loading && !store.ideas.length ? <div className="empty-box"><LoaderCircle className="spinning" size={30}/><h3>Opening your idea box...</h3></div> : focused ? <IdeaNotebook key={bucket} index={pageIndex} count={queueCount} nextColors={[1, 2].filter(step => step < queueCount).map(step => orderedQueue[(pageIndex + step) % queueCount].color)} disabled={busy || !store.ready} onPageChange={index => setBrowsedId(orderedQueue[index].id)}><FocusNote idea={focused} now={clock} rank={pageIndex} onEdit={() => setModal(focused)}/></IdeaNotebook> : <div className="closed-box-state"><div className="closed-note-stack" aria-hidden="true"><span/><span/><span><StickyNote size={36}/></span></div><div className="eyebrow">OUT OF YOUR HEAD. SAFE IN HERE.</div><h3>Your idea box is empty.</h3><p>Use Add idea to put a thought in the box.</p></div>}
             </div>
             <div className="box-lip"><span className="box-label"><Box size={15}/>{bucket === 'all' ? 'THE IDEA BOX' : bucket.toUpperCase()}</span><span className="box-message">A little less to think about.</span><span className="box-rivet"/></div>
           </div>

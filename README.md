@@ -2,6 +2,8 @@
 
 A responsive idea box for phone and desktop, with a spiral notebook for browsing your thoughts. One **Add idea** button captures typed or dictated thoughts. The notebook opens on the highest-priority note; **Pop idea** reviews the displayed note and returns to the highest remaining priority. **Find out ↗** searches Google for that note's text.
 
+Paired wire loops sit above the note controls, with a small fan of pages beneath showing the next ideas' actual colors. Navigation keeps just the arrow buttons and **Back to top**.
+
 [Open IdeaQueue](https://ideaqueue.vercel.app) · [GitHub repository](https://github.com/parm2006/IdeaQueue) · [Install the iPhone Shortcut](https://www.icloud.com/shortcuts/ace61478ef2547c68fb6341b2e522e24)
 
 The Vercel app uses **Supabase Postgres + Supabase Auth with Google OAuth**. Everyone signs into their own account; row-level security isolates their notes. Firebase is not used. Signed-out visitors get a sign-in screen. There is no anonymous note workspace or browser-only fallback.
@@ -15,7 +17,7 @@ The Vercel app uses **Supabase Postgres + Supabase Auth with Google OAuth**. Eve
 
 The live app is configured for Google sign-in and Supabase storage. The setup instructions below are for developers deploying another instance.
 
-The notebook also supports previous/next buttons, up/down arrow keys, and Page Up/Page Down. **Back to top** or Home returns to the highest priority; reopening the idea box or changing buckets starts there too. Browsing makes no database writes. Long notes scroll within their page before another gesture turns the page. Page-turn animations respect reduced-motion preferences.
+The notebook also supports previous/next buttons, up/down arrow keys, and Page Up/Page Down. Navigation loops from the last idea to the first and from the first to the last. Arrow keys work anywhere on the idea-box screen except while editing or using a dialog. **Back to top** or Home returns to the highest priority; reopening the idea box or changing buckets starts there too. Browsing makes no database writes. Long notes scroll within their page before another gesture turns the page. Page-turn animations respect reduced-motion preferences.
 
 ## Stack
 
