@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { ChevronDown, ChevronUp, ChevronsUp } from 'lucide-react';
+import { ChevronsUp } from 'lucide-react';
 import type { NoteColor } from '../lib/queue';
 import './IdeaNotebook.css';
 
@@ -97,10 +97,6 @@ export function IdeaNotebook({ index, count, nextColors, disabled, onPageChange,
       <div className="notebook-preview-pages" aria-hidden="true">{nextColors.map((color, i) => <div key={i} className={`notebook-preview note-${color}`}/>)}</div>
       <div className="notebook-sheet notebook-current" key={index}>{children}</div>
       {leaving && <div className={`notebook-sheet notebook-leaving notebook-${leaving.direction}`} aria-hidden="true" inert>{leaving.content}</div>}
-    </div>
-    <div className="notebook-navigation">
-      <button className="notebook-turn" aria-label="Previous idea" disabled={disabled || count < 2} onClick={() => turn(index - 1)}><ChevronUp size={18}/></button>
-      <button className="notebook-turn" aria-label="Next idea" disabled={disabled || count < 2} onClick={() => turn(index + 1)}><ChevronDown size={18}/></button>
     </div>
     <div className="notebook-return">{index > 0 && <button disabled={disabled} onClick={() => turn(0)}><ChevronsUp size={14}/> Back to top</button>}</div>
   </div>;

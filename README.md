@@ -2,7 +2,7 @@
 
 A responsive idea box for phone and desktop, with a spiral notebook for browsing your thoughts. One **Add idea** button captures typed or dictated thoughts. The notebook opens on the highest-priority note; **Pop idea** reviews the displayed note and returns to the highest remaining priority. **Find out ↗** searches Google for that note's text.
 
-Paired wire loops sit above the note controls, with a small fan of pages beneath showing the next ideas' actual colors. Navigation keeps just the arrow buttons and **Back to top**.
+Paired wire loops sit above the note controls, with a small fan of pages beneath showing the next ideas' actual colors. Browse with swipes, scrolling, or keyboard arrows; **Back to top** remains available. The Queue screen keeps functional labels and actions, with one **How IdeaQueue works** button for instructions.
 
 [Open IdeaQueue](https://ideaqueue.vercel.app) · [GitHub repository](https://github.com/parm2006/IdeaQueue) · [Install the iPhone Shortcut](https://www.icloud.com/shortcuts/ace61478ef2547c68fb6341b2e522e24)
 
@@ -17,7 +17,7 @@ The Vercel app uses **Supabase Postgres + Supabase Auth with Google OAuth**. Eve
 
 The live app is configured for Google sign-in and Supabase storage. The setup instructions below are for developers deploying another instance.
 
-The notebook also supports previous/next buttons, up/down arrow keys, and Page Up/Page Down. Navigation loops from the last idea to the first and from the first to the last. Arrow keys work anywhere on the idea-box screen except while editing or using a dialog. **Back to top** or Home returns to the highest priority; reopening the idea box or changing buckets starts there too. Browsing makes no database writes. Long notes scroll within their page before another gesture turns the page. Page-turn animations respect reduced-motion preferences.
+The notebook supports up/down arrow keys and Page Up/Page Down, with no on-screen previous/next buttons. Navigation loops from the last idea to the first and from the first to the last. Arrow keys work anywhere on the Queue screen except while editing or using a dialog. **Back to top** or Home returns to the highest priority; reopening Queue or changing buckets starts there too. Browsing makes no database writes. Long notes scroll within their page before another gesture turns the page. Page-turn animations respect reduced-motion preferences.
 
 ## Stack
 
@@ -52,7 +52,7 @@ npm run build
 
 ## Mobile and Shortcuts
 
-On iPhone, open the Vercel URL in Safari → Share → Add to Home Screen. Mobile navigation uses Box/Reviewed and a bucket selector; optional capture fields are collapsed. Pop idea and Find out occupy equal halves of the action row. External search behavior is controlled by the browser and OS. Dictation requires browser/device support and microphone permission; keyboard dictation is a fallback.
+On iPhone, open the Vercel URL in Safari → Share → Add to Home Screen. Mobile navigation uses Queue/Reviewed and a bucket selector; optional capture fields are collapsed. Pop idea and Find out occupy equal halves of the action row. External search behavior is controlled by the browser and OS. Dictation requires browser/device support and microphone permission; keyboard dictation is a fallback.
 
 The desktop sidebar and Settings include the [shared iPhone Shortcut](https://www.icloud.com/shortcuts/ace61478ef2547c68fb6341b2e522e24). Settings lets each authenticated user create/revoke a personal, create-only token. **Copy authorization** includes the required Bearer prefix; paste it into the template's blank Authorization header. The template saves each thought to `On My iPhone/IdeaQ/outbox.txt`, sends the complete queue to `/api/sync` when run on Wi-Fi, and clears its contents only after a positive saved count. Failed requests preserve the queue. Owner and capture time are set by the database at sync time. The raw token is shown once; only its hash is stored. See [capture implementation details](docs/SHORTCUTS.md#offline-outbox).
 
