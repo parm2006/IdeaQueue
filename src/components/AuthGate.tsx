@@ -1,3 +1,4 @@
+import { LegalLinks } from './LegalLinks';
 import { LoaderCircle, StickyNote } from 'lucide-react';
 
 export function AuthGate({ configured, loading, busy, error, onSignIn }: {
@@ -10,6 +11,7 @@ export function AuthGate({ configured, loading, busy, error, onSignIn }: {
       <button className="button google-signin" disabled={!configured || busy} onClick={onSignIn}>{busy ? <LoaderCircle size={18} className="spinning"/> : <span className="google-mark" aria-hidden="true">G</span>} Continue with Google</button>
       <p className="auth-caption">{configured ? 'Your account has its own private idea box.' : 'Sign-in is being configured. Please check back soon.'}</p>
     </>}
+    <LegalLinks/>
     {error && <p className="dialog-error" role="alert">{error}</p>}
   </section></main>;
 }

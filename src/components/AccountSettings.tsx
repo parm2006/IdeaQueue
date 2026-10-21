@@ -1,5 +1,6 @@
 import { Download, LogOut, Trash2, Upload } from 'lucide-react';
 import { bucketColors, type Category } from '../lib/queue';
+import { LegalLinks } from './LegalLinks';
 import { ShortcutSettings } from './ShortcutSettings';
 import { ReviewedRetention } from './ReviewedRetention';
 
@@ -16,6 +17,7 @@ export function AccountSettings({ email, busy, hourlyCleanup, buckets, onDeleteB
       {buckets.map(category => <div className="bucket-settings-row" key={category}><span className={`bucket-dot note-${bucketColors[category]}`} aria-hidden="true"/><span>{category}</span>{category !== 'General' && <button className="icon-button" aria-label={`Delete ${category} bucket`} disabled={busy} onClick={() => onDeleteBucket(category)}><Trash2 size={17}/></button>}</div>)}
     </details>
     <ShortcutSettings/>
+    <LegalLinks/>
     <div className="backup-section"><h3>Backup</h3><p>Export queued and reviewed notes. Import adds new notes without replacing existing ones.</p><div><button className="secondary-button" onClick={onExport}><Download size={16}/> Export notes</button><button className="secondary-button" onClick={onImport} disabled={busy}><Upload size={16}/> Import notes</button></div></div>
     <button className="text-button signout-link" onClick={onSignOut} disabled={busy}><LogOut size={16}/> Sign out</button>
   </div>;
