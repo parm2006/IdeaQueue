@@ -1,5 +1,6 @@
 export type Category = 'General' | 'Projects' | 'Computer science' | 'Mathematics' | 'Reading' | 'Personal';
 export type NoteColor = 'yellow' | 'pink' | 'green' | 'blue' | 'purple';
+export type BucketColor = NoteColor | 'peach';
 
 export interface Idea {
   id: string;
@@ -14,6 +15,13 @@ export interface Idea {
 
 export const categories: Category[] = ['General', 'Projects', 'Computer science', 'Mathematics', 'Reading', 'Personal'];
 export const colors: NoteColor[] = ['yellow', 'pink', 'green', 'blue', 'purple'];
+export const bucketColors: Record<Category, BucketColor> = {
+  General: 'yellow', Projects: 'pink', 'Computer science': 'blue', Mathematics: 'purple', Reading: 'peach', Personal: 'green',
+};
+
+export function availableCategory(category: Category, buckets: Category[]): Category {
+  return buckets.includes(category) ? category : 'General';
+}
 
 export const DAY_MS = 86400000;
 

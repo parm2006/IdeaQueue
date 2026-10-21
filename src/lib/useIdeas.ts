@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { hosted, workspaceApi, type WorkspaceUser } from './hosted';
 import { supabase } from './supabase';
-import { type Category, type Idea } from './queue';
+import { categories, type Category, type Idea } from './queue';
 
 const columns = 'id,text,context,category,priority,color,created_at,reviewed_at';
 
@@ -12,6 +12,7 @@ export function useIdeas() {
   const [error, setError] = useState('');
   const [ready, setReady] = useState(false);
   const [hourlyCleanup, setHourlyCleanup] = useState(true);
+  const [deletedBuckets, setDeletedBuckets] = useState<Category[]>([]);
   const userRef = useRef<WorkspaceUser | null>(null);
   const loadVersion = useRef(0);
   const workspaceEpoch = useRef(0);
@@ -22,6 +23,7 @@ export function useIdeas() {
     try {
       let next: Idea[] = [];
       let nextHourlyCleanup = true;
+      let nextDeletedBuckets: Category[] = [];
       if (hosted) {
         const session = await workspaceApi<{ user: WorkspaceUser }>('session');
         userRef.current = session.user; setUser(session.user);
@@ -29,15 +31,16 @@ export function useIdeas() {
       } else if (supabase && userRef.current) {
         const [notes, settings] = await Promise.all([
           supabase.from('ideas').select(columns).order('created_at', { ascending: false }),
-          supabase.from('ideaqueue_settings').select('hourly_cleanup').eq('user_id', userRef.current.id).maybeSingle(),
+          supabase.from('ideaqueue_settings').select('hourly_cleanup,deleted_buckets').eq('user_id', userRef.current.id).maybeSingle(),
         ]);
         const { data, error } = notes;
         if (error) throw error;
         if (settings.error) throw settings.error;
         nextHourlyCleanup = settings.data?.hourly_cleanup ?? true;
+        nextDeletedBuckets = settings.data?.deleted_buckets ?? [];
         next = data as Idea[];
       }
-      if (version === loadVersion.current) { setIdeas(next); setHourlyCleanup(nextHourlyCleanup); setReady(!!userRef.current); }
+      if (version === loadVersion.current) { setIdeas(next); setHourlyCleanup(nextHourlyCleanup); setDeletedBuckets(nextDeletedBuckets); setReady(!!userRef.current); }
     } catch (e) {
       if (version === loadVersion.current) setError((e as { message?: string })?.message || 'Could not load notes. Check your connection and retry.');
     } finally { if (version === loadVersion.current) setLoading(false); }
@@ -49,7 +52,7 @@ export function useIdeas() {
     const changeUser = (next: WorkspaceUser | null) => {
       if (userRef.current?.id !== next?.id) {
         workspaceEpoch.current++; loadVersion.current++;
-        setIdeas([]); setHourlyCleanup(true); setReady(false);
+        setIdeas([]); setHourlyCleanup(true); setDeletedBuckets([]); setReady(false);
       }
       userRef.current = next; setUser(next);
     };
@@ -124,6 +127,16 @@ export function useIdeas() {
     await refresh();
   };
 
+  const deleteBucket = async (category: Category) => {
+    requireUser();
+    const epoch = workspaceEpoch.current;
+    if (!supabase || hosted) throw new Error('Bucket settings are available on the Supabase app.');
+    const { error } = await supabase.rpc('delete_idea_bucket', { p_category: category });
+    if (error) throw error;
+    checkEpoch(epoch);
+    await refresh();
+  };
+
   const pop = async (category?: Category, expectedId?: string) => {
     requireUser();
     const epoch = workspaceEpoch.current;
@@ -165,5 +178,6 @@ export function useIdeas() {
     }
   };
 
-  return { ideas, user, loading, ready, error, refresh, save, pop, importNotes, hosted, hourlyCleanup, setReviewedCleanup };
+  return { ideas, user, loading, ready, error, refresh, save, pop, importNotes, hosted, hourlyCleanup, setReviewedCleanup,
+    buckets: categories.filter(category => !deletedBuckets.includes(category)), deleteBucket };
 }

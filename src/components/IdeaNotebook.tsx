@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { ChevronsUp } from 'lucide-react';
-import type { NoteColor } from '../lib/queue';
+import type { BucketColor } from '../lib/queue';
 import './IdeaNotebook.css';
 
 export function IdeaNotebook({ index, count, nextColors, disabled, onPageChange, children }: {
-  index: number; count: number; nextColors: NoteColor[]; disabled: boolean; onPageChange: (index: number) => void; children: ReactNode;
+  index: number; count: number; nextColors: BucketColor[]; disabled: boolean; onPageChange: (index: number) => void; children: ReactNode;
 }) {
   const viewport = useRef<HTMLDivElement>(null);
   const [leaving, setLeaving] = useState<{ content: ReactNode; direction: string } | null>(null);
@@ -65,7 +65,7 @@ export function IdeaNotebook({ index, count, nextColors, disabled, onPageChange,
     const touchCancel = () => { touch = null; };
     const keyDown = (event: KeyboardEvent) => {
       if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || document.querySelector('dialog[open]')) return;
-      if ((event.target as HTMLElement).closest('input, textarea, select, [contenteditable]:not([contenteditable="false"])')) return;
+      if ((event.target as HTMLElement).closest('input, textarea, select, [role="menu"], [contenteditable]:not([contenteditable="false"])')) return;
       const next = event.key === 'ArrowDown' || event.key === 'PageDown' ? index + 1
         : event.key === 'ArrowUp' || event.key === 'PageUp' ? index - 1 : event.key === 'Home' ? 0 : null;
       if (next !== null && canTurn()) { event.preventDefault(); turn(next); }

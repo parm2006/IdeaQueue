@@ -11,7 +11,7 @@ The Vercel app uses **Supabase Postgres + Supabase Auth with Google OAuth**. Eve
 ## Use the app
 
 1. Open the live app and continue with Google. Each account starts with its own private idea box.
-2. Choose **Add idea** to type or dictate a thought. Bucket, starting priority, context, and color are optional.
+2. Choose **Add idea** to type or dictate a thought. Bucket, starting priority, and context are optional. Note color follows its bucket.
 3. Start with the highest-priority thought, then swipe up/down or scroll over the notebook to browse other ideas in priority order. **Pop idea** moves the displayed thought to Reviewed and returns to the highest remaining priority; **Find out** opens a Google search for that thought.
 4. Use Reviewed to revisit or restore a note. Settings includes your reviewed-note cleanup preference, backups, the iPhone Shortcut installer, and personal capture tokens. Add idea stays available on both tabs.
 
@@ -19,13 +19,19 @@ The live app is configured for Google sign-in and Supabase storage. The setup in
 
 The notebook supports up/down arrow keys and Page Up/Page Down, with no on-screen previous/next buttons. Navigation loops from the last idea to the first and from the first to the last. Arrow keys work anywhere on the Queue screen except while editing or using a dialog. **Back to top** or Home returns to the highest priority; reopening Queue or changing buckets starts there too. Browsing makes no database writes. Long notes scroll within their page before another gesture turns the page. Page-turn animations respect reduced-motion preferences.
 
+Buckets use color dots: General is yellow, Projects pink, Computer science blue, Mathematics purple, Reading peach, and Personal green. Notes, capture previews, reviewed notes, and upcoming page edges use the same bucket colors. Existing stored color fields remain compatible with exports and the capture API; display colors are derived from the bucket.
+
+Right-click a bucket (or press Shift+F10 on its button) and choose **Delete bucket…**. On a phone, use **Settings → Buckets**. After confirmation, its queued and reviewed notes move to General; priority, capture times, and review times stay intact. Deletion applies only to the signed-in account and syncs across devices. Later captures/imports targeting a deleted bucket go to General. General remains available as the fallback bucket.
+
+The account button shows the Google profile photo supplied by Supabase Auth on desktop and phone. Its tooltip and accessible label identify the account email. Missing or unavailable photos use a generic account icon.
+
 ## Stack
 
 React 19, TypeScript, and Vite provide the frontend. Supabase Postgres stores notes; Supabase Auth handles Google OAuth and PKCE sessions. Database row-level security separates accounts. A Vercel Node function provides the create-only Shortcuts API. Vitest covers queue ordering, dictation, import validation, and API authorization. The queue uses a binary heap in the browser and matching indexed ordering in Postgres.
 
 ## Set up another deployment
 
-Follow [the exact Supabase and Google setup steps](docs/vercel-setup.md). Run `supabase/setup.sql`, `supabase/maintenance.sql`, `supabase/reviewed-retention.sql`, and `supabase/maintenance-schedule.sql` in that order, then enable the Google provider and configure the Vercel return URL. The retention migration is required by the current frontend. No old test notes are migrated. Client code needs only the public Supabase URL and publishable key.
+Follow [the exact Supabase and Google setup steps](docs/vercel-setup.md). Run `supabase/setup.sql`, `supabase/maintenance.sql`, `supabase/reviewed-retention.sql`, `supabase/buckets.sql`, and `supabase/maintenance-schedule.sql` in that order, then enable the Google provider and configure the Vercel return URL. Both settings migrations are required by the current frontend. No old test notes are migrated. Client code needs only the public Supabase URL and publishable key.
 
 ## Run locally
 
@@ -62,6 +68,8 @@ The Shortcut retries its queue when run on Wi-Fi; reconnecting alone does not la
 
 The capture JSON accepts only `text` (required), `context`, `category`, `priority`, and `color`. Extra fields return HTTP 400; do not send `user_id`, an ID, capture dates, reviewed status, or empty placeholder fields from the Shortcut editor. The database supplies ownership and capture time. Successful capture returns HTTP 201 with the new note's ID and timestamp.
 
+The API's legacy `color` field remains accepted; the app displays the color associated with the final bucket, including General when a deleted bucket is targeted.
+
 ## Database maintenance
 
 Open **Settings → Reviewed cleanup → Delete reviewed ideas every hour** to choose your account's retention:
@@ -83,6 +91,8 @@ Chromium checks at phone and desktop sizes cover notebook touch swipes, wheel an
 
 `supabase/maintenance.test.sql` verifies capacity rejection and preservation of pending notes. `supabase/reviewed-retention.test.sql` verifies account isolation, both retention modes, the exact 7-day review-age boundary, and re-enabling hourly deletion. Both are transactional scratch-database tests, not production setup scripts. Phone and desktop checks with synthetic accounts also verified that the Settings preference persists after reload and Add idea remains on both tabs.
 
+`supabase/buckets.test.sql` verifies private, idempotent bucket deletion, preservation of queued/reviewed notes and timestamps, General protection, unchanged retention settings, and browser/Shortcut captures after deletion. Browser checks cover color matching, cancellation, failed deletion, persistence, mobile settings, profile-photo metadata, email identity, and broken-photo fallback.
+
 ## Source layout
 
 - `src/App.tsx`: responsive box, capture sheet, upcoming note, and reviewed tray.
@@ -97,6 +107,7 @@ Chromium checks at phone and desktop sizes cover notebook touch swipes, wheel an
 - `api/sync.ts`: Vercel endpoint for a local Shortcut outbox.
 - `supabase/maintenance.sql`: database storage guard.
 - `supabase/reviewed-retention.sql`: private per-account preferences and admin-only retention cleanup.
+- `supabase/buckets.sql`: private bucket deletion and routing future captures to General.
 - `supabase/maintenance-schedule.sql`: hourly reviewed cleanup and app cron-log retention.
 
 The previous ChatGPT Sites app uses Cloudflare D1 and its private Sites access boundary. Its worker, migration history, and `npm run build:sites` command remain for reference; they are not the Vercel database/API. Old source and SQLite files stay preserved locally and are not published. Original requirements are in `docs/original-spec.md`.

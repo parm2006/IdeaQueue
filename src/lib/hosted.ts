@@ -1,4 +1,4 @@
-export interface WorkspaceUser { id: string; email?: string }
+export interface WorkspaceUser { id: string; email?: string; user_metadata?: { avatar_url?: unknown; picture?: unknown } }
 
 declare global { interface Window { __IDEAQUEUE_HOSTED__?: boolean } }
 export const hosted = window.__IDEAQUEUE_HOSTED__ === true;
