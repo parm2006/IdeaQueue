@@ -11,7 +11,7 @@ select cron.schedule(
   'ideaqueue-cron-history-cleanup', '15 0 * * *',
   $job$delete from cron.job_run_details
     where jobid in (select jobid from cron.job
-      where jobname in ('ideaqueue-reviewed-cleanup', 'ideaqueue-cron-history-cleanup'))
+      where jobname in ('ideaqueue-reviewed-cleanup', 'ideaqueue-cron-history-cleanup', 'ideaqueue-connector-cleanup'))
     and end_time < now() - interval '7 days';$job$
 );
 commit;

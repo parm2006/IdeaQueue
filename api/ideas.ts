@@ -3,11 +3,14 @@ import { categories, colors, inferCategory, type Category, type NoteColor } from
 
 // Structural Node request/response types avoid an additional runtime dependency.
 export interface CaptureRequest {
+  url?: string;
+  query?: Record<string, string | string[] | undefined>;
   method?: string;
   headers: Record<string, string | string[] | undefined>;
   body?: unknown;
 }
 export interface CaptureResponse {
+  end?(): unknown;
   setHeader(name: string, value: string): unknown;
   status(code: number): CaptureResponse;
   json(value: unknown): unknown;

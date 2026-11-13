@@ -1,6 +1,6 @@
 # Complete Supabase + Google setup
 
-Vercel and GitHub are already connected. Production and preview environment variables contain the Supabase project URL and **public publishable key**. The app does not use a secret/service-role key, Firebase, or a database password.
+Vercel and GitHub are already connected. Production and preview environment variables contain the Supabase project URL and **public publishable key**. The frontend uses no secret/service-role key. The account connector backend requires SUPABASE_SERVICE_ROLE_KEY only in Vercel server settings; see the agent setup section.
 
 ## 1. Install the database
 
@@ -72,3 +72,7 @@ The private storage policy defaults to a conservative 450 MB database allocation
 The publishable key is designed for browser use; row-level security protects the data. Rotate the privileged secret key that was shared in chat under Supabase Settings → API Keys. The deployed app does not need that key, so rotating it will not require a deployment change.
 
 The public key cannot install SQL or configure OAuth. To automate those admin steps in a later session, a Supabase Management API access token would be needed through a secure local credential flow; the project secret key is a different credential.
+
+## AI agent connections
+
+For an existing database, run the updated `supabase/agents.sql`, then `supabase/agent-oauth.sql`, `supabase/connector-limits.sql`, and `supabase/connector-schedule.sql`, before deploying the updated frontend. Set server-only `SUPABASE_SERVICE_ROLE_KEY` and the canonical `IDEAQUEUE_APP_URL` in Vercel. New installs include it in `setup.sql`. This adds account-based read-only OAuth connections; only queued cards ending in AI or agent are exposed. See [agent setup](agent-connection.md).

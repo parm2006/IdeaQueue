@@ -123,6 +123,14 @@ export function inferCategory(text: string): Category {
   return categoryKeywords.find(([, keywords]) => keywords.test(text))?.[0] ?? 'General';
 }
 
+export function hasAgentSuffix(text: string): boolean {
+  return /(?:^|\s)(?:ai|agent)$/i.test(text.trim());
+}
+
+export function isAgentVisible(idea: Pick<Idea, 'text'>): boolean {
+  return hasAgentSuffix(idea.text);
+}
+
 export function createIdea(input: {
   text: string;
   context?: string;
